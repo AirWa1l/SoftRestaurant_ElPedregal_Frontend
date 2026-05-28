@@ -1,0 +1,305 @@
+.register-form-wrapper {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 36px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(143, 92, 61, 0.08), rgba(255, 255, 255, 0.7));
+  border: 1px solid rgba(124, 74, 44, 0.15);
+  box-shadow: var(--shadow);
+}
+
+.register-form__title {
+  margin: 0 0 8px;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  color: var(--text-h);
+  text-align: center;
+}
+
+.register-form__subtitle {
+  margin: 0 0 28px;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.register-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.register-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.register-form__label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #8c4d28;
+}
+
+.register-form__input {
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(124, 74, 44, 0.18);
+  background: rgba(255, 255, 255, 0.75);
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--text-h);
+  outline: none;
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    background-color 200ms ease;
+}
+
+.register-form__input::placeholder {
+  color: rgba(95, 86, 78, 0.5);
+}
+
+.register-form__input:focus {
+  border-color: #8c4d28;
+  box-shadow: 0 0 0 3px rgba(140, 77, 40, 0.15);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.register-form__input--error {
+  border-color: #c0392b;
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.12);
+}
+
+.register-form__input--error:focus {
+  border-color: #c0392b;
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.2);
+}
+
+.register-form__error {
+  font-size: 0.8rem;
+  color: #c0392b;
+  font-weight: 600;
+  min-height: 1.2em;
+  animation: slideIn 200ms ease;
+}
+
+.register-form__password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.register-form__password-wrapper .register-form__input {
+  width: 100%;
+  padding-right: 48px;
+}
+
+.register-form__toggle-password {
+  position: absolute;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.register-form__toggle-password:hover {
+  color: #8c4d28;
+  background: rgba(140, 77, 40, 0.08);
+  transform: none;
+}
+
+.register-form__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px 18px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fffaf4;
+  background: linear-gradient(135deg, #8c4d28, #a5623a);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    box-shadow 200ms ease;
+  box-shadow: 0 4px 14px rgba(140, 77, 40, 0.25);
+}
+
+.register-form__submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(140, 77, 40, 0.35);
+}
+
+.register-form__submit:active {
+  transform: translateY(0);
+}
+
+.register-form__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.register-form__divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.register-form__divider::before,
+.register-form__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(124, 74, 44, 0.15);
+}
+
+.register-form__divider span {
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.register-form__login-link {
+  display: block;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.register-form__login-link a {
+  color: #8c4d28;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.register-form__login-link a:hover {
+  text-decoration: underline;
+}
+
+/* Success state */
+.register-form__success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 20px;
+  text-align: center;
+  animation: fadeIn 400ms ease;
+}
+
+.register-form__success-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(39, 174, 96, 0.15), rgba(39, 174, 96, 0.05));
+  color: #27ae60;
+  font-size: 2rem;
+}
+
+.register-form__success h3 {
+  margin: 0;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  font-size: 1.4rem;
+  color: var(--text-h);
+}
+
+.register-form__success p {
+  color: var(--text);
+  max-width: 38ch;
+}
+
+/* Strength indicator */
+.register-form__strength {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.register-form__strength-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(124, 74, 44, 0.12);
+  transition: background-color 300ms ease;
+}
+
+.register-form__strength-bar--active.strength-weak {
+  background: #e74c3c;
+}
+
+.register-form__strength-bar--active.strength-fair {
+  background: #f39c12;
+}
+
+.register-form__strength-bar--active.strength-good {
+  background: #2ecc71;
+}
+
+.register-form__strength-bar--active.strength-strong {
+  background: #27ae60;
+}
+
+.register-form__strength-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.strength-weak { color: #e74c3c; }
+.strength-fair { color: #f39c12; }
+.strength-good { color: #2ecc71; }
+.strength-strong { color: #27ae60; }
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .register-form-wrapper {
+    padding: 24px 20px;
+    border-radius: 22px;
+  }
+
+  .register-form__row {
+    grid-template-columns: 1fr;
+  }
+}

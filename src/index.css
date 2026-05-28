@@ -1,9 +1,26 @@
 :root {
+  /* Base text & background */
   --text: #5f564e;
   --text-h: #20170f;
   --bg: #f6efe8;
   --border: #e3d5c8;
   --shadow: 0 22px 45px rgba(98, 65, 40, 0.12);
+
+  /* Accent (brand) */
+  --accent: #8c4d28;
+  --accent-light: #a5623a;
+  --text-on-accent: #fffaf4;
+
+  /* Feedback */
+  --error: #c0392b;
+  --success: #27ae60;
+
+  /* Password strength */
+  --strength-weak: #e74c3c;
+  --strength-fair: #f39c12;
+  --strength-good: #2ecc71;
+  --strength-strong: #27ae60;
+
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;

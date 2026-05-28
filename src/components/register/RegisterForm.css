@@ -303,3 +303,32 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Global API Error Alert */
+.register-form__alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  animation: slideIn 200ms ease;
+}
+
+.register-form__alert--error {
+  background: color-mix(in srgb, var(--error) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error) 20%, transparent);
+  color: var(--error);
+}
+
+.register-form__alert-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.register-form__alert-message {
+  font-weight: 500;
+}
+

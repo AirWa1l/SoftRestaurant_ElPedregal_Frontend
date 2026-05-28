@@ -7,4 +7,13 @@ export type RegisterFormData = {
   confirmPassword: string
 }
 
+export type RegisterPayload = Omit<RegisterFormData, 'confirmPassword'>
+
+export type RegisterResponse = {
+  success: boolean
+  message: string
+  userId?: string
+}
+
 export type RegisterFormErrors = Partial<Record<keyof RegisterFormData, string>>
+

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { RegisterFormData, RegisterFormErrors } from '../../types/register'
+import { userService } from '../../services/userService'
 import './RegisterForm.css'
 
 const INITIAL_FORM: RegisterFormData = {
@@ -71,6 +72,7 @@ function validate(form: RegisterFormData): RegisterFormErrors {
 export function RegisterForm() {
   const [form, setForm] = useState<RegisterFormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<RegisterFormErrors>({})
+  const [apiError, setApiError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -80,6 +82,7 @@ export function RegisterForm() {
 
   function handleChange(field: keyof RegisterFormData, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
+    setApiError(null)
 
     // Clear error on change
     if (errors[field]) {
@@ -91,8 +94,9 @@ export function RegisterForm() {
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setApiError(null)
 
     const validationErrors = validate(form)
     setErrors(validationErrors)
@@ -101,11 +105,20 @@ export function RegisterForm() {
 
     setIsSubmitting(true)
 
-    // Simulated async submit
-    setTimeout(() => {
+    try {
+      const { confirmPassword, ...payload } = form
+      const response = await userService.register(payload)
+
+      if (response.success) {
+        setSubmitted(true)
+      } else {
+        setApiError(response.message)
+      }
+    } catch (error) {
+      setApiError('Ocurrió un error inesperado al conectar con el servidor.')
+    } finally {
       setIsSubmitting(false)
-      setSubmitted(true)
-    }, 1200)
+    }
   }
 
   if (submitted) {
@@ -279,6 +292,13 @@ export function RegisterForm() {
             <span className="register-form__error" role="alert">{errors.confirmPassword}</span>
           )}
         </div>
+
+        {apiError && (
+          <div className="register-form__alert register-form__alert--error" role="alert">
+            <span className="register-form__alert-icon">⚠️</span>
+            <span className="register-form__alert-message">{apiError}</span>
+          </div>
+        )}
 
         {/* Submit */}
         <button

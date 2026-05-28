@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import type { RegisterFormData, RegisterFormErrors } from '../../types/register'
 import { userService } from '../../services/userService'
-import './RegisterForm.css'
+import { InputText } from 'primereact/inputtext'
+import { Password } from 'primereact/password'
+import { Button } from 'primereact/button'
+import { Message } from 'primereact/message'
+import { classNames } from 'primereact/utils'
 
 const INITIAL_FORM: RegisterFormData = {
   firstName: '',
@@ -74,8 +78,6 @@ export function RegisterForm() {
   const [errors, setErrors] = useState<RegisterFormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const strength = getPasswordStrength(form.password)
@@ -123,11 +125,13 @@ export function RegisterForm() {
 
   if (submitted) {
     return (
-      <div className="register-form-wrapper">
-        <div className="register-form__success">
-          <div className="register-form__success-icon" aria-hidden="true">✓</div>
-          <h3>¡Registro exitoso!</h3>
-          <p>
+      <div className="w-full max-w-30rem mx-auto p-5 border-round-2xl shadow-4 surface-card border-1 surface-border">
+        <div className="flex flex-column align-items-center gap-3 py-4 text-center">
+          <div className="flex align-items-center justify-content-center w-4rem h-4rem border-circle bg-green-100 text-green-600 text-3xl font-bold">
+            ✓
+          </div>
+          <h3 className="m-0 text-xl font-bold text-900">¡Registro exitoso!</h3>
+          <p className="m-0 text-sm text-600 font-medium max-w-25rem">
             Tu cuenta ha sido creada correctamente. Pronto recibirás un correo de confirmación.
           </p>
         </div>
@@ -136,189 +140,190 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="register-form-wrapper">
-      <h2 className="register-form__title">Crear cuenta</h2>
-      <p className="register-form__subtitle">
+    <div className="w-full mx-auto p-4">
+      <h2 className="text-center font-bold text-3xl text-900 m-0 mb-2">Crear cuenta</h2>
+      <p className="text-center text-sm m-0 mb-5 text-600 font-medium">
         Únete a la familia El Pedregal y disfruta beneficios exclusivos.
       </p>
 
       <form onSubmit={handleSubmit} noValidate id="register-form">
         {/* Name row */}
-        <div className="register-form__row">
-          <div className="register-form__field">
-            <label className="register-form__label" htmlFor="register-firstName">
+        <div className="grid">
+          <div className="col-12 md:col-6 flex flex-column gap-2 mb-3">
+            <label className="text-xs font-bold text-primary uppercase" htmlFor="register-firstName">
               Nombre
             </label>
-            <input
+            <InputText
               id="register-firstName"
-              className={`register-form__input${errors.firstName ? ' register-form__input--error' : ''}`}
-              type="text"
+              className={classNames({ 'p-invalid': errors.firstName })}
               placeholder="Tu nombre"
               value={form.firstName}
               onChange={(e) => handleChange('firstName', e.target.value)}
               autoComplete="given-name"
             />
             {errors.firstName && (
-              <span className="register-form__error" role="alert">{errors.firstName}</span>
+              <small className="p-error block mt-1" role="alert">{errors.firstName}</small>
             )}
           </div>
 
-          <div className="register-form__field">
-            <label className="register-form__label" htmlFor="register-lastName">
+          <div className="col-12 md:col-6 flex flex-column gap-2 mb-3">
+            <label className="text-xs font-bold text-primary uppercase" htmlFor="register-lastName">
               Apellido
             </label>
-            <input
+            <InputText
               id="register-lastName"
-              className={`register-form__input${errors.lastName ? ' register-form__input--error' : ''}`}
-              type="text"
+              className={classNames({ 'p-invalid': errors.lastName })}
               placeholder="Tu apellido"
               value={form.lastName}
               onChange={(e) => handleChange('lastName', e.target.value)}
               autoComplete="family-name"
             />
             {errors.lastName && (
-              <span className="register-form__error" role="alert">{errors.lastName}</span>
+              <small className="p-error block mt-1" role="alert">{errors.lastName}</small>
             )}
           </div>
         </div>
 
         {/* Email */}
-        <div className="register-form__field">
-          <label className="register-form__label" htmlFor="register-email">
+        <div className="flex flex-column gap-2 mb-3">
+          <label className="text-xs font-bold text-primary uppercase" htmlFor="register-email">
             Correo electrónico
           </label>
-          <input
+          <InputText
             id="register-email"
-            className={`register-form__input${errors.email ? ' register-form__input--error' : ''}`}
             type="email"
+            className={classNames({ 'p-invalid': errors.email })}
             placeholder="correo@ejemplo.com"
             value={form.email}
             onChange={(e) => handleChange('email', e.target.value)}
             autoComplete="email"
           />
           {errors.email && (
-            <span className="register-form__error" role="alert">{errors.email}</span>
+            <small className="p-error block mt-1" role="alert">{errors.email}</small>
           )}
         </div>
 
         {/* Phone */}
-        <div className="register-form__field">
-          <label className="register-form__label" htmlFor="register-phone">
+        <div className="flex flex-column gap-2 mb-3">
+          <label className="text-xs font-bold text-primary uppercase" htmlFor="register-phone">
             Teléfono
           </label>
-          <input
+          <InputText
             id="register-phone"
-            className={`register-form__input${errors.phone ? ' register-form__input--error' : ''}`}
             type="tel"
+            className={classNames({ 'p-invalid': errors.phone })}
             placeholder="+57 300 000 0000"
             value={form.phone}
             onChange={(e) => handleChange('phone', e.target.value)}
             autoComplete="tel"
           />
           {errors.phone && (
-            <span className="register-form__error" role="alert">{errors.phone}</span>
+            <small className="p-error block mt-1" role="alert">{errors.phone}</small>
           )}
         </div>
 
-        {/* Password */}
-        <div className="register-form__field">
-          <label className="register-form__label" htmlFor="register-password">
-            Contraseña
-          </label>
-          <div className="register-form__password-wrapper">
-            <input
+        {/* Password & Confirm Password Grid */}
+        <div className="grid">
+          {/* Password */}
+          <div className="col-12 md:col-6 flex flex-column gap-2 mb-3">
+            <label className="text-xs font-bold text-primary uppercase" htmlFor="register-password">
+              Contraseña
+            </label>
+            <Password
               id="register-password"
-              className={`register-form__input${errors.password ? ' register-form__input--error' : ''}`}
-              type={showPassword ? 'text' : 'password'}
+              inputClassName="w-full"
+              className={classNames({ 'p-invalid': errors.password })}
+              toggleMask
+              feedback={false}
               placeholder="Mínimo 8 caracteres"
               value={form.password}
               onChange={(e) => handleChange('password', e.target.value)}
               autoComplete="new-password"
             />
-            <button
-              type="button"
-              className="register-form__toggle-password"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            >
-              {showPassword ? '🙈' : '👁'}
-            </button>
+            {errors.password && (
+              <small className="p-error block mt-1" role="alert">{errors.password}</small>
+            )}
           </div>
-          {form.password && (
-            <>
-              <div className="register-form__strength" aria-hidden="true">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className={`register-form__strength-bar${i <= strength.level ? ` register-form__strength-bar--active ${strength.className}` : ''}`}
-                  />
-                ))}
-              </div>
-              <span className={`register-form__strength-label ${strength.className}`}>
-                {strength.label}
-              </span>
-            </>
-          )}
-          {errors.password && (
-            <span className="register-form__error" role="alert">{errors.password}</span>
-          )}
-        </div>
 
-        {/* Confirm password */}
-        <div className="register-form__field">
-          <label className="register-form__label" htmlFor="register-confirmPassword">
-            Confirmar contraseña
-          </label>
-          <div className="register-form__password-wrapper">
-            <input
+          {/* Confirm password */}
+          <div className="col-12 md:col-6 flex flex-column gap-2 mb-3">
+            <label className="text-xs font-bold text-primary uppercase" htmlFor="register-confirmPassword">
+              Confirmar contraseña
+            </label>
+            <Password
               id="register-confirmPassword"
-              className={`register-form__input${errors.confirmPassword ? ' register-form__input--error' : ''}`}
-              type={showConfirm ? 'text' : 'password'}
+              inputClassName="w-full"
+              className={classNames({ 'p-invalid': errors.confirmPassword })}
+              toggleMask
+              feedback={false}
               placeholder="Repite tu contraseña"
               value={form.confirmPassword}
               onChange={(e) => handleChange('confirmPassword', e.target.value)}
               autoComplete="new-password"
             />
-            <button
-              type="button"
-              className="register-form__toggle-password"
-              onClick={() => setShowConfirm((v) => !v)}
-              aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            >
-              {showConfirm ? '🙈' : '👁'}
-            </button>
+            {errors.confirmPassword && (
+              <small className="p-error block mt-1" role="alert">{errors.confirmPassword}</small>
+            )}
           </div>
-          {errors.confirmPassword && (
-            <span className="register-form__error" role="alert">{errors.confirmPassword}</span>
-          )}
         </div>
 
+        {/* Indicador de Fortaleza de Contraseña a ancho completo */}
+        {form.password && (
+          <div className="mb-3">
+            <div className="flex gap-2 animate-duration-200" aria-hidden="true">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className={classNames('flex-1 h-1 border-round-sm transition-colors transition-duration-300', {
+                    'bg-gray-300': i > strength.level,
+                    'bg-red-500': i <= strength.level && strength.className === 'strength-weak',
+                    'bg-orange-500': i <= strength.level && strength.className === 'strength-fair',
+                    'bg-green-500': i <= strength.level && strength.className === 'strength-good',
+                    'bg-green-600': i <= strength.level && strength.className === 'strength-strong',
+                  })}
+                />
+              ))}
+            </div>
+            <span className={classNames('text-xs font-bold mt-2 block', {
+              'text-red-500': strength.className === 'strength-weak',
+              'text-orange-500': strength.className === 'strength-fair',
+              'text-green-500': strength.className === 'strength-good',
+              'text-green-600': strength.className === 'strength-strong',
+            })}>
+              {strength.label}
+            </span>
+          </div>
+        )}
+
         {apiError && (
-          <div className="register-form__alert register-form__alert--error" role="alert">
-            <span className="register-form__alert-icon">⚠️</span>
-            <span className="register-form__alert-message">{apiError}</span>
+          <div className="mb-4">
+            <Message
+              severity="error"
+              text={apiError}
+              className="w-full justify-content-start border-round-xl p-2"
+            />
           </div>
         )}
 
         {/* Submit */}
-        <button
+        <Button
           type="submit"
-          className="register-form__submit"
+          className="w-full mt-4 border-round-3xl font-bold"
           id="register-submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Creando cuenta…' : 'Crear cuenta'}
-        </button>
+          label={isSubmitting ? 'Creando cuenta…' : 'Crear cuenta'}
+          loading={isSubmitting}
+        />
       </form>
 
-      <div className="register-form__divider">
-        <span>o</span>
+      <div className="flex flex-column align-items-center justify-center gap-3 mt-4">
+        <p className="text-center text-sm font-semibold text-600 m-0">
+          ¿Ya tienes cuenta?{' '}
+          <a href="#inicio" className="text-primary no-underline font-bold hover:underline transition-colors transition-duration-150">
+            Inicia sesión
+          </a>
+        </p>
       </div>
 
-      <p className="register-form__login-link">
-        ¿Ya tienes cuenta?{' '}
-        <a href="#inicio">Inicia sesión</a>
-      </p>
     </div>
   )
 }

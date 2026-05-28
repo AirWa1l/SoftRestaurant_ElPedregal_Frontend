@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
 :root {
   /* Base text & background */
   --text: #5f564e;
@@ -6,10 +8,26 @@
   --border: #e3d5c8;
   --shadow: 0 22px 45px rgba(98, 65, 40, 0.12);
 
-  /* Accent (brand) */
-  --accent: #8c4d28;
-  --accent-light: #a5623a;
-  --text-on-accent: #fffaf4;
+  /* PrimeReact Aura Preset overrides */
+  --primary-50: #e8f0f7;
+  --primary-100: #cce0f0;
+  --primary-200: #99c2e0;
+  --primary-300: #66a3d0;
+  --primary-400: #5c92cc;
+  --primary-500: #2e76ba;
+  --primary-600: #255e95;
+  --primary-700: #1c4770;
+  --primary-800: #132f4a;
+  --primary-900: #0a1825;
+  --primary-950: #050c12;
+
+  --primary-color: var(--primary-500);
+  --primary-color-text: #ffffff;
+
+  /* Accent (brand) linked to our corporate primary */
+  --accent: var(--primary-500);
+  --accent-light: var(--primary-400);
+  --text-on-accent: #ffffff;
 
   /* Feedback */
   --error: #c0392b;

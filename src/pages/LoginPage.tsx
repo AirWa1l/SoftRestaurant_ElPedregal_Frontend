@@ -1,3 +1,4 @@
+import { RecoveryPasswordForm } from '../components/recovery_password/RecoveryPasswordForm';
 import { RegisterForm } from '../components/register/RegisterForm'
 
 import { TabView, TabPanel } from 'primereact/tabview';
@@ -32,6 +33,9 @@ export function LoginPage() {
             </TabPanel>
             <TabPanel header="Register">
               <RegisterForm />
+            </TabPanel>
+            <TabPanel header="Recovery Password">
+              <RecoveryPasswordForm />
             </TabPanel>
           </TabView>
         </div>

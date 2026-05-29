@@ -298,7 +298,6 @@ export function RecoveryPasswordForm() {
             className="border-round-3xl font-bold"
             style={{ width: '40%' }}
             label="Volver"
-            icon="pi pi-arrow-left"
             severity="secondary"
             outlined
             onClick={() => {
@@ -312,7 +311,6 @@ export function RecoveryPasswordForm() {
             type="submit"
             className="border-round-3xl font-bold flex-1"
             label={isSubmitting ? 'Guardando…' : 'Guardar contraseña'}
-            icon="pi pi-check"
             iconPos="right"
             loading={isSubmitting}
           />

@@ -205,3 +205,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.p-password {
+  display: contents;
+}

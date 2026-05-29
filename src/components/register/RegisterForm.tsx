@@ -73,7 +73,11 @@ function validate(form: RegisterFormData): RegisterFormErrors {
   return errors
 }
 
-export function RegisterForm() {
+interface Props {
+  onGoToLogin: () => void
+}
+
+export function RegisterForm({ onGoToLogin }: Props) {
   const [form, setForm] = useState<RegisterFormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<RegisterFormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
@@ -318,7 +322,7 @@ export function RegisterForm() {
       <div className="flex flex-column align-items-center justify-center gap-3 mt-4">
         <p className="text-center text-sm font-semibold text-600 m-0">
           ¿Ya tienes cuenta?{' '}
-          <a href="#inicio" className="text-primary no-underline font-bold hover:underline transition-colors transition-duration-150">
+          <a onClick={onGoToLogin} className="text-primary no-underline font-bold hover:underline transition-colors transition-duration-150">
             Inicia sesión
           </a>
         </p>

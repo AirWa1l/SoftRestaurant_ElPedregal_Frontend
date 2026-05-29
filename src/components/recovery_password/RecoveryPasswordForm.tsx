@@ -6,6 +6,7 @@ import { Password } from 'primereact/password'
 import { Button } from 'primereact/button'
 import { Message } from 'primereact/message'
 import { classNames } from 'primereact/utils'
+import { useNavigate } from 'react-router-dom'
 import 'primeicons/primeicons.css'
 
 const INITIAL_FORM: RecoveryPasswordFormData = {
@@ -57,13 +58,18 @@ function validate(form: RecoveryPasswordFormData): RecoveryPasswordFormErrors {
   return errors
 }
 
-export function RecoveryPasswordForm() {
+interface Props {
+  onGoToLogin: () => void
+}
+
+export function RecoveryPasswordForm({ onGoToLogin }: Props) {
   const [form, setForm] = useState<RecoveryPasswordFormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<RecoveryPasswordFormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [step, setStep] = useState<'email' | 'password'>('email')
+  const navigate = useNavigate()
 
   const strength = getPasswordStrength(form.password)
 
@@ -146,7 +152,7 @@ export function RecoveryPasswordForm() {
     <div className="text-center mt-4">
       <p className="text-sm font-semibold text-600 m-0">
         ¿Recordaste tu contraseña?{' '}
-        <a href="#login" className="text-primary no-underline font-bold hover:underline">
+        <a onClick={onGoToLogin} className="text-primary no-underline font-bold hover:underline">
           Inicia sesión
         </a>
       </p>

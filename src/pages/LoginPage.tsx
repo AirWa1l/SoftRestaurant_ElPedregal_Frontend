@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { RecoveryPasswordForm } from '../components/recovery_password/RecoveryPasswordForm';
 import { RegisterForm } from '../components/register/RegisterForm'
 
 import { TabView, TabPanel } from 'primereact/tabview';
 
 export function LoginPage() {
+  const [outerTab, setOuterTab] = useState(0)
+  const [innerTab, setInnerTab] = useState(0)
   return (
     <div className="w-full">
       <main className="min-h-screen flex flex-column md:flex-row">
@@ -27,15 +30,21 @@ export function LoginPage() {
           </div>
         </section>
         <div className="w-full md:w-7 flex align-items-center justify-content-center">
-          <TabView className='bg-none w-full' style={{ background: 'none' }}>
+          <TabView className='bg-none w-full' style={{ background: 'none' }} activeIndex={outerTab} onTabChange={(e) => setOuterTab(e.index)}>
             <TabPanel header="Login">
 
             </TabPanel>
             <TabPanel header="Register">
-              <RegisterForm />
+              <RegisterForm 
+              onGoToLogin={() => {
+                  setOuterTab(0)
+                }}/>
             </TabPanel>
             <TabPanel header="Recovery Password">
-              <RecoveryPasswordForm />
+              <RecoveryPasswordForm
+                onGoToLogin={() => {
+                  setOuterTab(0)
+                }} />
             </TabPanel>
           </TabView>
         </div>

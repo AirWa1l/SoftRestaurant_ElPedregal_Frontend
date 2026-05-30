@@ -1,52 +1,67 @@
-import type { HighlightCard, NavigationLink, SiteDetail } from '../types/site'
+import type { HighlightCard, NavigationLink } from '../types/site'
 
-export const siteContent: {
-  brand: string
-  tagline: string
-  navigation: NavigationLink[]
-  hero: {
-    eyebrow: string
-    title: string
-    copy: string
-    primaryAction: string
-    secondaryAction: string
-  }
-  highlights: HighlightCard[]
-  details: SiteDetail[]
-} = {
+type OrderStatus = 'Pendiente' | 'Preparación' | 'Entregado' | 'Facturado'
+
+type DashboardMetric = {
+  label: string
+  value: string
+  note: string
+}
+
+type DashboardOrder = {
+  number: string
+  table: string
+  products: string
+  total: string
+  status: OrderStatus
+}
+
+type DashboardRecentOrder = {
+  number: string
+  products: string
+  total: string
+  time: string
+  status: Exclude<OrderStatus, 'Facturado'>
+}
+
+export const siteContent = {
   brand: 'El Pedregal',
-  tagline: 'Cocina de fuego, mesas compartidas y atención cercana.',
+  tagline: 'SoftRestaurant',
   navigation: [
-    { label: 'Inicio', href: '#inicio' },
-    { label: 'Menú', href: '#menu' },
-    { label: 'Reservas', href: '#reservas' },
-    { label: 'Contacto', href: '#contacto' },
-  ],
+    { label: 'Dashboard', href: '/home' },
+    { label: 'Pedidos', href: '/home' },
+    { label: 'Productos', href: '/home' },
+    { label: 'Usuarios', href: '/home' },
+    { label: 'Configuración', href: '/home' },
+  ] satisfies NavigationLink[],
   hero: {
-    eyebrow: 'Proyecto base',
-    title: 'Un inicio limpio para el sitio del restaurante.',
-    copy:
-      'Esta estructura separa páginas, componentes, datos y tipos para que el front pueda crecer sin perder orden desde el primer commit.',
-    primaryAction: 'Ver menú',
-    secondaryAction: 'Reservar mesa',
+    eyebrow: 'Dashboard',
+    title: 'Dashboard',
+    copy: 'Panel sencillo para validar la navegación desde el login hacia la vista principal.',
+    primaryAction: 'Nuevo pedido',
+    secondaryAction: 'Buscar pedido',
   },
   highlights: [
-    {
-      title: 'Estructura clara',
-      description: 'Carpetas separadas para componentes, páginas, datos, tipos y assets.',
-    },
-    {
-      title: 'Base con Vite',
-      description: 'Arranque rápido con React + TypeScript listo para desarrollo y despliegue.',
-    },
-    {
-      title: 'Lista para crecer',
-      description: 'Puedes agregar luego menú, reservas, galería, contacto y secciones nuevas.',
-    },
-  ],
-  details: [
-    { label: 'Horario', value: 'Mar a dom · 13:00 a 23:00' },
-    { label: 'Ubicación', value: 'Yumbo' },
-    { label: 'Especialidad', value: 'Parrilla, antojitos y coctelería de autor' },
-  ],
+    { title: 'Pedidos', description: 'Acceso rápido a la gestión del día.' },
+    { title: 'Ventas', description: 'Resumen general de ingresos y ticket.' },
+    { title: 'Caja', description: 'Estado rápido de la operación del restaurante.' },
+  ] satisfies HighlightCard[],
+  metrics: [
+    { label: 'Ventas hoy', value: '$847.500', note: '+12% vs ayer' },
+    { label: 'Pedidos activos', value: '14', note: '3 en preparación' },
+    { label: 'Pedidos del día', value: '38', note: '+5 vs ayer' },
+    { label: 'Ticket promedio', value: '$22.300', note: '+3%' },
+  ] satisfies DashboardMetric[],
+  orders: [
+    { number: '038', table: 'Mesa 4', products: 'Bandeja paisa, Jugo lulo', total: '$38.000', status: 'Pendiente' },
+    { number: '037', table: 'Mesa 2', products: 'Trucha, Limonada', total: '$45.000', status: 'Preparación' },
+    { number: '036', table: 'Mesa 7', products: 'Sancocho, Cerveza x2', total: '$32.000', status: 'Preparación' },
+    { number: '035', table: 'Mesa 1', products: 'Chuleta, Gaseosa', total: '$28.000', status: 'Entregado' },
+    { number: '034', table: 'Mesa 5', products: 'Asado, Agua', total: '$22.000', status: 'Facturado' },
+  ] satisfies DashboardOrder[],
+  recentOrders: [
+    { number: '038', products: 'Bandeja paisa · Jugo de lulo', total: '$38.000', time: 'hace 2 min', status: 'Pendiente' },
+    { number: '037', products: 'Trucha al ajillo · Limonada natural', total: '$45.000', time: 'hace 8 min', status: 'Preparación' },
+    { number: '036', products: 'Sancocho de gallina · 2 Cervezas', total: '$32.000', time: 'hace 15 min', status: 'Entregado' },
+  ] satisfies DashboardRecentOrder[],
 }

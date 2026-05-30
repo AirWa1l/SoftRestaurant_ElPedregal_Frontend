@@ -12,6 +12,10 @@ const INITIAL_FORM: LoginFormData = {
   password: '',
 }
 
+interface Props {
+  onGoToRecovery: () => void
+}
+
 function validate(form: LoginFormData): LoginFormErrors {
   const errors: LoginFormErrors = {}
 
@@ -28,7 +32,7 @@ function validate(form: LoginFormData): LoginFormErrors {
   return errors
 }
 
-export function LoginForm() {
+export function LoginForm({ onGoToRecovery }: Props) {
   const [form, setForm] = useState<LoginFormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<LoginFormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
@@ -156,6 +160,16 @@ export function LoginForm() {
           label={isSubmitting ? 'Ingresando…' : 'Iniciar sesión'}
           loading={isSubmitting}
         />
+
+        <div className="flex flex-column align-items-center justify-center gap-3 mt-4">
+            <p className="text-center text-sm font-semibold text-600 m-0">
+            ¿Olvidaste tu contraseña?{' '}
+            <a onClick={onGoToRecovery} className="text-primary no-underline font-bold hover:underline transition-colors transition-duration-150">
+                Recuperar contraseña
+            </a>
+            </p>
+        </div>
+
       </form>
     </div>
   )

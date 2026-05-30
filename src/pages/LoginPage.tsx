@@ -33,7 +33,9 @@ export function LoginPage() {
         <div className="w-full md:w-7 flex align-items-center justify-content-center">
           <TabView className='bg-none w-full' style={{ background: 'none' }} activeIndex={outerTab} onTabChange={(e) => setOuterTab(e.index)}>
             <TabPanel header="Login">
-              <LoginForm />
+              <LoginForm onGoToRecovery={() => {
+                setOuterTab(2)
+              }} />
             </TabPanel>
             <TabPanel header="Register">
               <RegisterForm 

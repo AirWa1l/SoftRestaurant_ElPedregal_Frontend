@@ -46,7 +46,7 @@ export const siteContent: {
   ],
   details: [
     { label: 'Horario', value: 'Mar a dom · 13:00 a 23:00' },
-    { label: 'Ubicación', value: 'Centro histórico · Ciudad de México' },
+    { label: 'Ubicación', value: 'Yumbo' },
     { label: 'Especialidad', value: 'Parrilla, antojitos y coctelería de autor' },
   ],
 }

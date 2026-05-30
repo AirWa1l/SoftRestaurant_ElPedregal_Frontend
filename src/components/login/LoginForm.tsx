@@ -6,6 +6,8 @@ import { Password } from 'primereact/password'
 import { Button } from 'primereact/button'
 import { Message } from 'primereact/message'
 import { classNames } from 'primereact/utils'
+import { useNavigate } from 'react-router-dom'
+
 
 const INITIAL_FORM: LoginFormData = {
   email: '',
@@ -14,6 +16,7 @@ const INITIAL_FORM: LoginFormData = {
 
 interface Props {
   onGoToRecovery: () => void
+  onGoToRegister: () => void
 }
 
 function validate(form: LoginFormData): LoginFormErrors {
@@ -32,7 +35,8 @@ function validate(form: LoginFormData): LoginFormErrors {
   return errors
 }
 
-export function LoginForm({ onGoToRecovery }: Props) {
+export function LoginForm({ onGoToRecovery, onGoToRegister }: Props) {
+  const navigate = useNavigate()
   const [form, setForm] = useState<LoginFormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<LoginFormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
@@ -79,19 +83,7 @@ export function LoginForm({ onGoToRecovery }: Props) {
   }
 
   if (submitted) {
-    return (
-      <div className="w-full max-w-30rem mx-auto p-5 border-round-2xl shadow-4 surface-card border-1 surface-border">
-        <div className="flex flex-column align-items-center gap-3 py-4 text-center">
-          <div className="flex align-items-center justify-content-center w-4rem h-4rem border-circle bg-green-100 text-green-600 text-3xl font-bold">
-            ✓
-          </div>
-          <h3 className="m-0 text-xl font-bold text-900">¡Bienvenido!</h3>
-          <p className="m-0 text-sm text-600 font-medium max-w-25rem">
-            Tu inicio de sesión fue exitoso. Ahora puedes continuar a la aplicación.
-          </p>
-        </div>
-      </div>
-    )
+    navigate('/home')
   }
 
   return (
@@ -166,6 +158,15 @@ export function LoginForm({ onGoToRecovery }: Props) {
             ¿Olvidaste tu contraseña?{' '}
             <a onClick={onGoToRecovery} className="text-primary no-underline font-bold hover:underline transition-colors transition-duration-150">
                 Recuperar contraseña
+            </a>
+            </p>
+        </div>
+
+        <div className="flex flex-column align-items-center justify-center gap-3 mt-4">
+            <p className="text-center text-sm font-semibold text-600 m-0">
+            ¿No tienes una cuenta?{' '}
+            <a onClick={onGoToRegister} className="text-primary no-underline font-bold hover:underline transition-colors transition-duration-150">
+                Registrarme
             </a>
             </p>
         </div>

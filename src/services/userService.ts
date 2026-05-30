@@ -1,5 +1,6 @@
 import type { RegisterPayload, RegisterResponse } from '../types/register'
 import type { RecoveryPasswordPayload, RecoveryPasswordResponse } from '../types/recoveryPassword'
+import type {LoginPayload, LoginResponse} from '../types/login'
 
 const API_BASE_URL = 'http://localhost:8000/api'
 
@@ -40,6 +41,32 @@ export const userService = {
       message: 'Contraseña recuperada exitosamente en El Pedregal.',
       userId: crypto.randomUUID(),
     }
-  }
+  },
+
+  async login(payload: LoginPayload): Promise<LoginResponse> {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+
+    if (payload.email === 'noexiste@correo.com') {
+      return {
+        success: false,
+        message: 'No existe una cuenta con ese correo electrónico.',
+      }
+    }
+
+    if (payload.password !== '12345678') {
+      return {
+        success: false,
+        message: 'Contraseña incorrecta.',
+      }
+    }
+
+    console.log(`[userService.login] Enviando a ${API_BASE_URL}/users/login`, payload)
+
+    return {
+      success: true,
+      message: 'Inicio de sesión exitoso en El Pedregal.',
+      userId: crypto.randomUUID(),
+    }
+  },
 
 }

@@ -1,13 +1,43 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { siteContent } from '../data/siteContent'
+import { userService } from '../services/userService'
+import type { CurrentUser } from '../types/profile'
 
 export function DashboardHomePage() {
+  const navigate = useNavigate()
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadCurrentUser() {
+      const response = await userService.getCurrentUser()
+
+      if (!isMounted) return
+
+      if (response.success && response.user) {
+        setCurrentUser(response.user)
+      }
+    }
+
+    void loadCurrentUser()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+  
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
         <DashboardSidebarHeader />
-        <DashboardSidebarFooter />
+        <DashboardSidebarFooter
+          currentUser={currentUser}
+          onGoToEditProfile={() => navigate('/edit-profile')}
+        />
       </aside>
 
       <main className="dashboard-main">

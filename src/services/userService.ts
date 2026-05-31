@@ -1,6 +1,11 @@
 import type { RegisterPayload, RegisterResponse } from '../types/register'
 import type { RecoveryPasswordPayload, RecoveryPasswordResponse } from '../types/recoveryPassword'
 import type {LoginPayload, LoginResponse} from '../types/login'
+import type {
+  CurrentUserResponse,
+  ProfileFormData,
+  ProfileResponse,
+} from '../types/profile'
 
 const API_BASE_URL = 'http://localhost:8000/api'
 
@@ -66,6 +71,42 @@ export const userService = {
       success: true,
       message: 'Inicio de sesión exitoso en El Pedregal.',
       userId: crypto.randomUUID(),
+    }
+  },
+
+  async getProfile(): Promise<ProfileResponse> {
+    await new Promise((resolve) => setTimeout(resolve, 900))
+
+    const profile: ProfileFormData = {
+      firstName: 'Carlos',
+      lastName: 'Rodriguez',
+      email: 'carlos.rodriguez@email.com',
+      phone: '+57 300 000 0000',
+    }
+
+    console.log(`[userService.getProfile] Obteniendo desde ${API_BASE_URL}/users/profile`)
+
+    return {
+      success: true,
+      message: 'Perfil cargado exitosamente.',
+      profile,
+    }
+  },
+
+  async getCurrentUser(): Promise<CurrentUserResponse> {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    console.log(`[userService.getCurrentUser] Obteniendo desde ${API_BASE_URL}/users/current`)
+
+    return {
+      success: true,
+      message: 'Usuario actual cargado exitosamente.',
+      user: {
+        initials: 'CR',
+        name: 'Carlos Rodriguez',
+        role: 'Cajero',
+        email: 'carlos.rodriguez@email.com',
+      },
     }
   },
 

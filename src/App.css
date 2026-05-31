@@ -412,3 +412,18 @@
     min-width: 100%;
   }
 }
+.p-password {
+  display: contents;
+}
+.dashboard-logout-button {
+  width: 100%;
+  margin-top: 12px;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  color: #f8fbff !important;
+  background: transparent !important;
+}
+
+.dashboard-logout-button:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}

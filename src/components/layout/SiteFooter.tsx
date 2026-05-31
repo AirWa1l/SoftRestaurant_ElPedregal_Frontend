@@ -1,3 +1,4 @@
+import { LogoutButton } from './LogoutButton'
 export function SiteFooter() {
   return (
     <footer className="dashboard-sidebar__footer" id="contacto">
@@ -10,6 +11,7 @@ export function SiteFooter() {
       </div>
 
       <p className="dashboard-sidebar__copy">Panel de control simple.</p>
+      <LogoutButton />
     </footer>
   )
 }

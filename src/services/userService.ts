@@ -4,6 +4,8 @@ import type { LoginPayload, LoginResponse } from '../types/login'
 import type {
   CurrentUserResponse,
   CurrentUser,
+  DeleteAccountPayload,
+  DeleteAccountResponse,
   ProfileFormData,
   ProfileResponse,
   ProfileFormErrors,
@@ -184,6 +186,33 @@ export const userService = {
       success: true,
       message: 'Perfil actualizado en servidor (simulado).',
       profile: updatedProfile,
+    }
+  },
+
+  async deleteAccount(payload: DeleteAccountPayload): Promise<DeleteAccountResponse> {
+    console.log(`[userService.deleteAccount] Enviando a ${API_BASE_URL}/users/delete-account`)
+
+    await new Promise((resolve) => setTimeout(resolve, 900))
+
+    if (!cachedCurrentUser) {
+      return {
+        success: false,
+        message: 'No hay una sesión activa para eliminar.',
+      }
+    }
+
+    if (payload.password !== '12345678') {
+      return {
+        success: false,
+        message: 'La contraseña no coincide.',
+      }
+    }
+
+    emitCurrentUser(null)
+
+    return {
+      success: true,
+      message: 'Cuenta eliminada correctamente (simulado).',
     }
   },
 

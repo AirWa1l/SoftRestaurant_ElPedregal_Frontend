@@ -16,6 +16,15 @@ export type ProfileResponse = {
 
 export type ProfileFormErrors = Partial<Record<keyof ProfileFormData, string>>
 
+export type DeleteAccountPayload = {
+  password: string
+}
+
+export type DeleteAccountResponse = {
+  success: boolean
+  message: string
+}
+
 export type CurrentUser = {
   initials: string
   name: string

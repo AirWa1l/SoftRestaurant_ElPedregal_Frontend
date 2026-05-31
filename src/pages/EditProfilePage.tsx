@@ -9,6 +9,7 @@ import type { CurrentUser, ProfileFormData, ProfileFormErrors } from '../types/p
 import { useNavigate } from 'react-router-dom'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
+import { DeleteAccountDialog } from '../components/profile/DeleteAccountDialog'
 
 const INITIAL_FORM: ProfileFormData = {
   firstName: '',
@@ -46,6 +47,9 @@ export function EditProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [isDeleteDialogVisible, setIsDeleteDialogVisible] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -98,6 +102,44 @@ export function EditProfilePage() {
         delete next[field]
         return next
       })
+    }
+  }
+
+  function handleOpenDeleteDialog() {
+    setDeleteAccountError(null)
+    setIsDeleteDialogVisible(true)
+  }
+
+  function handleHideDeleteDialog() {
+    setIsDeleteDialogVisible(false)
+    setDeleteAccountError(null)
+  }
+
+  async function handleConfirmDeleteAccount(password: string) {
+    setDeleteAccountError(null)
+    setIsDeleting(true)
+
+    try {
+      const response = await userService.deleteAccount({ password })
+
+      if (!response.success) {
+        setDeleteAccountError(response.message)
+        return
+      }
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Cuenta eliminada',
+        detail: response.message,
+        life: 2500,
+      })
+
+      setIsDeleteDialogVisible(false)
+      navigate('/', { replace: true })
+    } catch {
+      setDeleteAccountError('No fue posible eliminar la cuenta. Intenta de nuevo.')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -269,6 +311,7 @@ export function EditProfilePage() {
                     severity="danger"
                     outlined
                     className="w-full border-round-xl font-semibold"
+                    onClick={handleOpenDeleteDialog}
                   />
                 </div>
               </form>
@@ -276,6 +319,14 @@ export function EditProfilePage() {
           </section>
         </div>
       </main>
+
+      <DeleteAccountDialog
+        visible={isDeleteDialogVisible}
+        onHide={handleHideDeleteDialog}
+        onConfirm={handleConfirmDeleteAccount}
+        isProcessing={isDeleting}
+        serverError={deleteAccountError}
+      />
     </div>
   )
 }

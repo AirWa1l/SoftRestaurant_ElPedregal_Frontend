@@ -11,6 +11,7 @@ export type ProfileResponse = {
   success: boolean
   message: string
   profile?: ProfileFormData
+  errors?: ProfileFormErrors
 }
 
 export type ProfileFormErrors = Partial<Record<keyof ProfileFormData, string>>

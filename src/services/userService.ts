@@ -1,14 +1,38 @@
 import type { RegisterPayload, RegisterResponse } from '../types/register'
 import type { RecoveryPasswordPayload, RecoveryPasswordResponse } from '../types/recoveryPassword'
-import type {LoginPayload, LoginResponse} from '../types/login'
+import type { LoginPayload, LoginResponse } from '../types/login'
 import type {
   CurrentUserResponse,
   CurrentUser,
   ProfileFormData,
   ProfileResponse,
+  ProfileFormErrors,
 } from '../types/profile'
 
 const API_BASE_URL = 'http://localhost:8000/api'
+
+// --- in-memory cache + pubsub for current user ---
+let cachedCurrentUser: CurrentUser | null = null
+const currentUserListeners: Array<(u: CurrentUser | null) => void> = []
+
+function emitCurrentUser(u: CurrentUser | null) {
+  cachedCurrentUser = u
+  currentUserListeners.forEach((cb) => {
+    try {
+      cb(u)
+    } catch (e) {
+      console.warn('[userService] listener error', e)
+    }
+  })
+}
+
+function onCurrentUserChange(cb: (u: CurrentUser | null) => void) {
+  currentUserListeners.push(cb)
+  return () => {
+    const idx = currentUserListeners.indexOf(cb)
+    if (idx >= 0) currentUserListeners.splice(idx, 1)
+  }
+}
 
 export const userService = {
   async register(payload: RegisterPayload): Promise<RegisterResponse> {
@@ -121,67 +145,48 @@ export const userService = {
     }
   },
 
-}
+  async updateProfile(payload: ProfileFormData): Promise<ProfileResponse> {
+    console.log(`[userService.updateProfile] Enviando a ${API_BASE_URL}/users/profile`, payload)
 
-// --- Helpers: simple in-memory cache + pubsub for current user ---
+    // Simulate network latency and simple server-side validation
+    await new Promise((resolve) => setTimeout(resolve, 900))
 
-let cachedCurrentUser: CurrentUser | null = null
-const currentUserListeners: Array<(u: CurrentUser | null) => void> = []
-
-function emitCurrentUser(u: CurrentUser | null) {
-  cachedCurrentUser = u
-  currentUserListeners.forEach((cb) => {
-    try {
-      cb(u)
-    } catch (e) {
-      console.warn('[userService] listener error', e)
+    // Simulated server-side validation error example
+    if (payload.email === 'exists@server.com') {
+      const errors: ProfileFormErrors = { email: 'Este correo ya está en uso.' }
+      return {
+        success: false,
+        message: 'Error de validación en el servidor.',
+        errors,
+      }
     }
-  })
-}
 
-export const userServiceHelpers = {
-  onCurrentUserChange(cb: (u: CurrentUser | null) => void) {
-    currentUserListeners.push(cb)
-    // return unsubscribe
-    return () => {
-      const idx = currentUserListeners.indexOf(cb)
-      if (idx >= 0) currentUserListeners.splice(idx, 1)
+    if (payload.email === 'invalid@server.com') {
+      return {
+        success: false,
+        message: 'El correo proporcionado no es permitido por el servidor.',
+      }
+    }
+
+    const updatedProfile: ProfileFormData = { ...payload }
+
+    // Update cached current user (simple mapping: name = first + last, initials)
+    const updatedUser: CurrentUser = {
+      initials: `${(payload.firstName[0] ?? '').toUpperCase()}${(payload.lastName[0] ?? '').toUpperCase()}` || '??',
+      name: `${payload.firstName} ${payload.lastName}`.trim() || 'Usuario',
+      role: cachedCurrentUser?.role ?? 'Cajero',
+      email: payload.email,
+    }
+
+    emitCurrentUser(updatedUser)
+
+    return {
+      success: true,
+      message: 'Perfil actualizado en servidor (simulado).',
+      profile: updatedProfile,
     }
   },
+
+  // expose subscription helper
+  onCurrentUserChange,
 }
-
-// Add updateProfile method to main export for saving profile and updating cached user
-;(userService as any).updateProfile = async function (payload: ProfileFormData): Promise<ProfileResponse> {
-  console.log(`[userService.updateProfile] Enviando a ${API_BASE_URL}/users/profile`, payload)
-
-  // Simulate network latency and simple server-side validation
-  await new Promise((resolve) => setTimeout(resolve, 900))
-
-  if (payload.email === 'invalid@server.com') {
-    return {
-      success: false,
-      message: 'El correo proporcionado no es permitido por el servidor.',
-    }
-  }
-
-  const updatedProfile: ProfileFormData = { ...payload }
-
-  // Update cached current user (simple mapping: name = first + last, initials)
-  const updatedUser: CurrentUser = {
-    initials: `${(payload.firstName[0] ?? '').toUpperCase()}${(payload.lastName[0] ?? '').toUpperCase()}` || '??',
-    name: `${payload.firstName} ${payload.lastName}`.trim() || 'Usuario',
-    role: cachedCurrentUser?.role ?? 'Cajero',
-    email: payload.email,
-  }
-
-  emitCurrentUser(updatedUser)
-
-  return {
-    success: true,
-    message: 'Perfil actualizado en servidor (simulado).',
-    profile: updatedProfile,
-  }
-}
-
-// Expose helpers on the main export for convenience
-;(userService as any).onCurrentUserChange = userServiceHelpers.onCurrentUserChange

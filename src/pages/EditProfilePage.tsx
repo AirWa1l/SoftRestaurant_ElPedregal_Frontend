@@ -113,7 +113,7 @@ export function EditProfilePage() {
 
     setIsSaving(true)
     try {
-      const res = await (userService as any).updateProfile(form)
+      const res = await userService.updateProfile(form)
 
       if (res.success) {
         setSuccessMessage(res.message || 'Perfil actualizado correctamente.')
@@ -123,6 +123,10 @@ export function EditProfilePage() {
         const cur = await userService.getCurrentUser()
         if (cur.success && cur.user) setCurrentUser(cur.user)
       } else {
+        // If server provided field errors, map them to the form
+        if (res.errors) {
+          setErrors(res.errors)
+        }
         setApiError(res.message || 'No fue posible guardar los cambios.')
         toast.current?.show({ severity: 'error', summary: 'Error', detail: res.message || 'No fue posible guardar', life: 4000 })
       }

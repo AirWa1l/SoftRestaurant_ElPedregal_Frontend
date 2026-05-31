@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { InputText } from 'primereact/inputtext'
 import { Button } from 'primereact/button'
 import { Message } from 'primereact/message'
+import { Toast } from 'primereact/toast'
 import { classNames } from 'primereact/utils'
 import { userService } from '../services/userService'
 import type { CurrentUser, ProfileFormData, ProfileFormErrors } from '../types/profile'
@@ -38,6 +39,8 @@ export function EditProfilePage() {
   const [form, setForm] = useState<ProfileFormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<ProfileFormErrors>({})
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+
+  const toast = useRef<any>(null)
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -110,12 +113,22 @@ export function EditProfilePage() {
 
     setIsSaving(true)
     try {
-      // Paso temporal: simulación de guardado local.
-      // En el siguiente paso se reemplaza por userService.updateProfile(form).
-      await new Promise((resolve) => setTimeout(resolve, 900))
-      setSuccessMessage('Perfil actualizado correctamente.')
+      const res = await (userService as any).updateProfile(form)
+
+      if (res.success) {
+        setSuccessMessage(res.message || 'Perfil actualizado correctamente.')
+        toast.current?.show({ severity: 'success', summary: 'Guardado', detail: res.message || 'Perfil actualizado.', life: 3000 })
+
+        // Refresh local currentUser from service (cache updated inside service)
+        const cur = await userService.getCurrentUser()
+        if (cur.success && cur.user) setCurrentUser(cur.user)
+      } else {
+        setApiError(res.message || 'No fue posible guardar los cambios.')
+        toast.current?.show({ severity: 'error', summary: 'Error', detail: res.message || 'No fue posible guardar', life: 4000 })
+      }
     } catch {
       setApiError('No fue posible guardar los cambios.')
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'No fue posible guardar los cambios.', life: 4000 })
     } finally {
       setIsSaving(false)
     }
@@ -148,6 +161,7 @@ export function EditProfilePage() {
       </aside>
 
       <main className="edit-profile-main">
+        <Toast ref={toast} />
         <div className="edit-profile-layout">
           <section className="edit-profile-card">
             <div className="edit-profile-card__header">

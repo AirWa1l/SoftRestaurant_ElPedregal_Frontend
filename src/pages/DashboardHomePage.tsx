@@ -25,8 +25,15 @@ export function DashboardHomePage() {
 
     void loadCurrentUser()
 
+    // Subscribe to currentUser updates from userService (pubsub)
+    const unsub = (userService as any).onCurrentUserChange?.((u: CurrentUser | null) => {
+      if (!isMounted) return
+      setCurrentUser(u)
+    })
+
     return () => {
       isMounted = false
+      if (typeof unsub === 'function') unsub()
     }
   }, [])
   

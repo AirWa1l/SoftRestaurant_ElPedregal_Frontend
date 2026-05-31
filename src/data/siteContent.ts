@@ -27,6 +27,11 @@ type DashboardRecentOrder = {
 export const siteContent = {
   brand: 'El Pedregal',
   tagline: 'SoftRestaurant',
+  dashboardUser: {
+    initials: 'MC',
+    name: 'María Cajero',
+    role: 'Cajero',
+  },
   navigation: [
     { label: 'Dashboard', href: '/home' },
     { label: 'Pedidos', href: '/home' },

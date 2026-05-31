@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { HomePage } from './pages/HomePage'
+import { DashboardHomePage } from './pages/DashboardHomePage'
 import { LoginPage } from './pages/LoginPage'
 import './App.css'
 
@@ -12,7 +12,7 @@ function App() {
     <PrimeReactProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/home" element={<HomePage />} />
+          <Route path="/home" element={<DashboardHomePage />} />
           <Route path="/" element={<LoginPage />} />
         </Routes>
       </BrowserRouter>

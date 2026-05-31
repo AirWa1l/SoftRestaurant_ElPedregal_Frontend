@@ -1,13 +1,13 @@
-import { SiteFooter } from '../components/layout/SiteFooter'
-import { SiteHeader } from '../components/layout/SiteHeader'
+import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
+import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { siteContent } from '../data/siteContent'
 
-export function HomePage() {
+export function DashboardHomePage() {
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
-        <SiteHeader />
-        <SiteFooter />
+        <DashboardSidebarHeader />
+        <DashboardSidebarFooter />
       </aside>
 
       <main className="dashboard-main">

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { siteContent } from '../../data/siteContent'
 
-export function SiteHeader() {
+export function DashboardSidebarHeader() {
   return (
     <header className="dashboard-sidebar__header">
       <Link className="dashboard-brand" to="/home" aria-label={siteContent.brand}>

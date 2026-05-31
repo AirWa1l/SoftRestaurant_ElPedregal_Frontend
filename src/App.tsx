@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { HomePage } from './pages/HomePage'
+import { DashboardHomePage } from './pages/DashboardHomePage'
 import { LoginPage } from './pages/LoginPage'
+import { EditProfilePage } from './pages/EditProfilePage'
 import './App.css'
 
 import { PrimeReactProvider } from 'primereact/api';
@@ -12,8 +13,9 @@ function App() {
     <PrimeReactProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/register" element={<LoginPage />} />
+          <Route path="/home" element={<DashboardHomePage />} />
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/edit-profile" element={<EditProfilePage />} />
         </Routes>
       </BrowserRouter>
     </PrimeReactProvider>

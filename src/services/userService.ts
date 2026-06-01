@@ -12,25 +12,40 @@ import type {
 } from '../types/profile'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/auth'
+const ACCESS_TOKEN_STORAGE_KEY = 'pedregal_access_token'
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(body),
-  })
+let cachedCurrentUser: CurrentUser | null = null
+let cachedAccessToken: string | null = null
+const currentUserListeners: Array<(u: CurrentUser | null) => void> = []
 
-  const data = await response.json().catch(() => ({} as T))
-  if (!response.ok) {
-    throw new Error((data as any)?.message || 'server_error')
-  }
-  return data as T
+function getStoredAccessToken() {
+  if (cachedAccessToken) return cachedAccessToken
+  if (typeof window === 'undefined') return null
+  cachedAccessToken = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
+  return cachedAccessToken
 }
 
-// --- in-memory cache + pubsub for current user ---
-let cachedCurrentUser: CurrentUser | null = null
-const currentUserListeners: Array<(u: CurrentUser | null) => void> = []
+function setStoredAccessToken(token: string | null) {
+  cachedAccessToken = token
+  if (typeof window !== 'undefined') {
+    if (token) {
+      window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token)
+    } else {
+      window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
+    }
+  }
+}
+
+function buildCurrentUser(user: { firstName?: string; lastName?: string; email: string }) {
+  const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Usuario'
+  const initials = `${(user.firstName?.[0] ?? '').toUpperCase()}${(user.lastName?.[0] ?? '').toUpperCase()}` || '--'
+  return {
+    initials,
+    name,
+    role: 'Empleado',
+    email: user.email,
+  }
+}
 
 function emitCurrentUser(u: CurrentUser | null) {
   cachedCurrentUser = u
@@ -51,10 +66,39 @@ function onCurrentUserChange(cb: (u: CurrentUser | null) => void) {
   }
 }
 
+async function requestJson<T>(path: string, options: { method?: string; body?: unknown } = {}) {
+  const headers: Record<string, string> = {}
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  const token = getStoredAccessToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method ?? 'GET',
+    headers,
+    credentials: 'include',
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+  })
+
+  const text = await response.text()
+  const data = text ? JSON.parse(text) : null
+
+  if (!response.ok) {
+    const message = data?.message || 'server_error'
+    throw new Error(message)
+  }
+
+  return data as T
+}
+
 export const userService = {
   async register(payload: RegisterPayload): Promise<RegisterResponse> {
     try {
-      const result = await postJson<{ id: string }>('/register', payload)
+      const result = await requestJson<{ id: string }>('/register', { method: 'POST', body: payload })
       return {
         success: true,
         message: 'Usuario registrado exitosamente en El Pedregal.',
@@ -74,7 +118,7 @@ export const userService = {
 
   async recoveryPassword(payload: RecoveryPasswordPayload): Promise<RecoveryPasswordResponse> {
     try {
-      await postJson('/forgot-password', { email: payload.email })
+      await requestJson('/forgot-password', { method: 'POST', body: { email: payload.email } })
       return {
         success: true,
         message: 'Se envió el enlace de recuperación al correo electrónico.',
@@ -93,12 +137,18 @@ export const userService = {
 
   async login(payload: LoginPayload): Promise<LoginResponse> {
     try {
-      await postJson('/login', payload)
+      const result = await requestJson<{ accessToken: string }>('/login', { method: 'POST', body: payload })
+      setStoredAccessToken(result.accessToken)
+      const currentUserResponse = await this.getCurrentUser()
+      if (currentUserResponse.success && currentUserResponse.user) {
+        emitCurrentUser(currentUserResponse.user)
+      }
       return {
         success: true,
         message: 'Inicio de sesión exitoso en El Pedregal.',
       }
     } catch (error) {
+      setStoredAccessToken(null)
       const message = (error as Error).message
       return {
         success: false,
@@ -110,31 +160,38 @@ export const userService = {
     }
   },
 
-  async getProfile(): Promise<ProfileResponse> {
-    await new Promise((resolve) => setTimeout(resolve, 900))
-
-    const profile: ProfileFormData = {
-      firstName: 'Carlos',
-      lastName: 'Rodriguez',
-      email: 'carlos.rodriguez@email.com',
-      phone: '+57 300 000 0000',
+  async logout(): Promise<void> {
+    try {
+      await requestJson<void>('/logout', { method: 'POST' })
+    } catch {
+      // Ignore network errors during logout
+    } finally {
+      setStoredAccessToken(null)
+      emitCurrentUser(null)
     }
+  },
 
-    console.log(`[userService.getProfile] Obteniendo desde ${API_BASE_URL}/users/profile`)
-
-    return {
-      success: true,
-      message: 'Perfil cargado exitosamente.',
-      profile,
+  async getProfile(): Promise<ProfileResponse> {
+    try {
+      const result = await requestJson<{ message: string; profile: ProfileFormData }>('/users/profile')
+      return {
+        success: true,
+        message: result.message,
+        profile: result.profile,
+      }
+    } catch (error) {
+      const message = (error as Error).message
+      return {
+        success: false,
+        message:
+          message === 'unauthorized'
+            ? 'Debe iniciar sesión de nuevo.'
+            : 'No fue posible cargar el perfil.',
+      }
     }
   },
 
   async getCurrentUser(): Promise<CurrentUserResponse> {
-    // If we have a cached user, return it quickly
-    await new Promise((resolve) => setTimeout(resolve, 200))
-
-    console.log(`[userService.getCurrentUser] Obteniendo desde ${API_BASE_URL}/users/current`)
-
     if (cachedCurrentUser) {
       return {
         success: true,
@@ -143,88 +200,86 @@ export const userService = {
       }
     }
 
-    // Default simulated response
-    return {
-      success: true,
-      message: 'Usuario actual cargado exitosamente.',
-      user: {
-        initials: 'CR',
-        name: 'Carlos Rodriguez',
-        role: 'Cajero',
-        email: 'carlos.rodriguez@email.com',
-      },
+    try {
+      const result = await requestJson<{ message: string; user: CurrentUser }>('/users/current')
+      if (result.user) {
+        emitCurrentUser(result.user)
+      }
+      return {
+        success: true,
+        message: result.message,
+        user: result.user,
+      }
+    } catch (error) {
+      const message = (error as Error).message
+      if (message === 'unauthorized') {
+        setStoredAccessToken(null)
+        emitCurrentUser(null)
+      }
+      return {
+        success: false,
+        message: 'No fue posible cargar el usuario actual.',
+      }
     }
   },
 
   async updateProfile(payload: ProfileFormData): Promise<ProfileResponse> {
-    console.log(`[userService.updateProfile] Enviando a ${API_BASE_URL}/users/profile`, payload)
+    try {
+      const result = await requestJson<{ message: string; profile: ProfileFormData }>('/users/profile', {
+        method: 'PUT',
+        body: payload,
+      })
 
-    // Simulate network latency and simple server-side validation
-    await new Promise((resolve) => setTimeout(resolve, 900))
+      const updatedUser = buildCurrentUser(result.profile)
+      emitCurrentUser(updatedUser)
 
-    // Simulated server-side validation error example
-    if (payload.email === 'exists@server.com') {
-      const errors: ProfileFormErrors = { email: 'Este correo ya está en uso.' }
+      return {
+        success: true,
+        message: result.message || 'Perfil actualizado correctamente.',
+        profile: result.profile,
+      }
+    } catch (error) {
+      const message = (error as Error).message
+      const responseErrors: ProfileFormErrors = {}
+
+      if (message === 'email_in_use') {
+        responseErrors.email = 'Este correo ya está en uso.'
+      }
+
       return {
         success: false,
-        message: 'Error de validación en el servidor.',
-        errors,
+        message: message === 'unauthorized' ? 'Debe iniciar sesión de nuevo.' : 'No fue posible guardar los cambios.',
+        errors: responseErrors,
       }
-    }
-
-    if (payload.email === 'invalid@server.com') {
-      return {
-        success: false,
-        message: 'El correo proporcionado no es permitido por el servidor.',
-      }
-    }
-
-    const updatedProfile: ProfileFormData = { ...payload }
-
-    // Update cached current user (simple mapping: name = first + last, initials)
-    const updatedUser: CurrentUser = {
-      initials: `${(payload.firstName[0] ?? '').toUpperCase()}${(payload.lastName[0] ?? '').toUpperCase()}` || '??',
-      name: `${payload.firstName} ${payload.lastName}`.trim() || 'Usuario',
-      role: cachedCurrentUser?.role ?? 'Cajero',
-      email: payload.email,
-    }
-
-    emitCurrentUser(updatedUser)
-
-    return {
-      success: true,
-      message: 'Perfil actualizado en servidor (simulado).',
-      profile: updatedProfile,
     }
   },
 
   async deleteAccount(payload: DeleteAccountPayload): Promise<DeleteAccountResponse> {
-    console.log(`[userService.deleteAccount] Enviando a ${API_BASE_URL}/users/delete-account`)
+    try {
+      await requestJson<{ message: string }>('/users/delete-account', {
+        method: 'POST',
+        body: payload,
+      })
+      setStoredAccessToken(null)
+      emitCurrentUser(null)
 
-    await new Promise((resolve) => setTimeout(resolve, 900))
-
-    if (!cachedCurrentUser) {
+      return {
+        success: true,
+        message: 'Cuenta eliminada correctamente.',
+      }
+    } catch (error) {
+      const message = (error as Error).message
       return {
         success: false,
-        message: 'No hay una sesión activa para eliminar.',
+        message:
+          message === 'invalid_credentials'
+            ? 'La contraseña no coincide.'
+            : message === 'unauthorized'
+            ? 'Debe iniciar sesión de nuevo.'
+            : 'No fue posible eliminar la cuenta. Intenta de nuevo.',
       }
-    }
-
-    if (payload.password !== '12345678') {
-      return {
-        success: false,
-        message: 'La contraseña no coincide.',
-      }
-    }
-
-    emitCurrentUser(null)
-
-    return {
-      success: true,
-      message: 'Cuenta eliminada correctamente (simulado).',
     }
   },
 
-  // expose subscription helper
   onCurrentUserChange,
 }

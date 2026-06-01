@@ -11,7 +11,22 @@ import type {
   ProfileFormErrors,
 } from '../types/profile'
 
-const API_BASE_URL = 'http://localhost:8000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/auth'
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  })
+
+  const data = await response.json().catch(() => ({} as T))
+  if (!response.ok) {
+    throw new Error((data as any)?.message || 'server_error')
+  }
+  return data as T
+}
 
 // --- in-memory cache + pubsub for current user ---
 let cachedCurrentUser: CurrentUser | null = null
@@ -38,66 +53,60 @@ function onCurrentUserChange(cb: (u: CurrentUser | null) => void) {
 
 export const userService = {
   async register(payload: RegisterPayload): Promise<RegisterResponse> {
-    await new Promise((resolve) => resolve(new Promise((r) => setTimeout(r, 1500))))
-
-    if (payload.email === 'existe@correo.com') {
+    try {
+      const result = await postJson<{ id: string }>('/register', payload)
+      return {
+        success: true,
+        message: 'Usuario registrado exitosamente en El Pedregal.',
+        userId: result.id,
+      }
+    } catch (error) {
+      const message = (error as Error).message
       return {
         success: false,
-        message: 'Ya existe una cuenta registrada con este correo electrónico.',
+        message:
+          message === 'email_in_use'
+            ? 'Ya existe una cuenta registrada con este correo electrónico.'
+            : 'Ocurrió un error al registrar el usuario.',
       }
-    }
-
-    console.log(`[userService.register] Enviando a ${API_BASE_URL}/users/register`, payload)
-
-    return {
-      success: true,
-      message: 'Usuario registrado exitosamente en El Pedregal.',
-      userId: crypto.randomUUID(),
     }
   },
 
   async recoveryPassword(payload: RecoveryPasswordPayload): Promise<RecoveryPasswordResponse> {
-    await new Promise((resolve) => resolve(new Promise((r) => setTimeout(r, 1500))))
-
-    if (payload.email === 'noexiste@correo.com') {
+    try {
+      await postJson('/forgot-password', { email: payload.email })
+      return {
+        success: true,
+        message: 'Se envió el enlace de recuperación al correo electrónico.',
+      }
+    } catch (error) {
+      const message = (error as Error).message
       return {
         success: false,
-        message: 'No existe una cuenta registrada con este correo electrónico.',
+        message:
+          message === 'invalid_or_expired_token' || message === 'user_not_found'
+            ? 'No existe una cuenta registrada con este correo electrónico.'
+            : 'Ocurrió un error al recuperar la contraseña.',
       }
-    }
-
-    console.log(`[userService.recoveryPassword] Enviando a ${API_BASE_URL}/users/recovery-password`, payload)
-
-    return {
-      success: true,
-      message: 'Contraseña recuperada exitosamente en El Pedregal.',
-      userId: crypto.randomUUID(),
     }
   },
 
   async login(payload: LoginPayload): Promise<LoginResponse> {
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    if (payload.email === 'noexiste@correo.com') {
+    try {
+      await postJson('/login', payload)
+      return {
+        success: true,
+        message: 'Inicio de sesión exitoso en El Pedregal.',
+      }
+    } catch (error) {
+      const message = (error as Error).message
       return {
         success: false,
-        message: 'No existe una cuenta con ese correo electrónico.',
+        message:
+          message === 'invalid_credentials'
+            ? 'Correo o contraseña incorrectos.'
+            : 'Ocurrió un error al iniciar sesión.',
       }
-    }
-
-    if (payload.password !== '12345678') {
-      return {
-        success: false,
-        message: 'Contraseña incorrecta.',
-      }
-    }
-
-    console.log(`[userService.login] Enviando a ${API_BASE_URL}/users/login`, payload)
-
-    return {
-      success: true,
-      message: 'Inicio de sesión exitoso en El Pedregal.',
-      userId: crypto.randomUUID(),
     }
   },
 

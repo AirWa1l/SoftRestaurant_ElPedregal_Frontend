@@ -6,7 +6,7 @@ import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
 import { Message } from 'primereact/message'
 import { classNames } from 'primereact/utils'
-import type { Product, ProductFormErrors } from '../../../types/Product';
+import type { Product, ProductFormErrors } from '../../../types/product';
 import { productService } from '../../../services/productService'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -34,7 +34,10 @@ const CATEGORIES = [
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-function validate(form: Product): ProductFormErrors {
+function validate(
+  form: Product,
+  imageFile: File | null
+): ProductFormErrors {
   const errors: ProductFormErrors = {}
 
   if (!form.name.trim()) {
@@ -65,7 +68,11 @@ function validate(form: Product): ProductFormErrors {
     errors.description = 'La descripción debe tener al menos 10 caracteres'
   }
 
-  if (form.imageUrl && !/^https?:\/\/.+\..+/.test(form.imageUrl.trim())) {
+  if (
+    form.imageUrl &&
+    !imageFile &&
+    !/^https?:\/\/.+\..+/.test(form.imageUrl.trim())
+  ) {
     errors.imageUrl = 'Ingresa una URL válida (https://...)'
   }
 
@@ -84,16 +91,31 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
   const [errors, setErrors] = useState<ProductFormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [imagePreviewError, setImagePreviewError] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  function handleChange<K extends keyof Product>(field: K, value: Product[K]) {
-    setForm((prev) => ({ ...prev, [field]: value }))
+  function handleChange<K extends keyof Product>(
+    field: K,
+    value: Product[K]
+  ) {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value
+    }))
+
     setApiError(null)
-    if (field === 'imageUrl') setImagePreviewError(false)
+
+    if (field === 'imageUrl') {
+      setImagePreviewError(false)
+
+      // Si el usuario escribe una URL,
+      // dejamos de usar el archivo seleccionado
+      setImageFile(null)
+    }
 
     if (errors[field as keyof ProductFormErrors]) {
       setErrors((prev) => {
@@ -104,11 +126,31 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
     }
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
     const file = e.target.files?.[0]
+
     if (!file) return
+
+    setImageFile(file)
+
     const objectUrl = URL.createObjectURL(file)
-    handleChange('imageUrl', objectUrl)
+
+    setForm((prev) => ({
+      ...prev,
+      imageUrl: objectUrl
+    }))
+
+    setImagePreviewError(false)
+
+    if (errors.imageUrl) {
+      setErrors((prev) => {
+        const next = { ...prev }
+        delete next.imageUrl
+        return next
+      })
+    }
   }
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -117,14 +159,28 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
     e.preventDefault()
     setApiError(null)
 
-    const validationErrors = validate(form)
+    const validationErrors = validate(form, imageFile)
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) return
 
     setIsSubmitting(true)
 
     try {
-      await productService.create(form)
+      if (imageFile) {
+        const formData = new FormData()
+
+        formData.append('name', form.name)
+        formData.append('category', form.category)
+        formData.append('description', form.description)
+        formData.append('price', String(form.price))
+        formData.append('stock', String(form.stock))
+        formData.append('image', imageFile)
+
+        await productService.create(formData as any)
+      } else {
+        await productService.create(form)
+      }
+
       setSubmitted(true)
       onSuccess?.(form)
     } catch {

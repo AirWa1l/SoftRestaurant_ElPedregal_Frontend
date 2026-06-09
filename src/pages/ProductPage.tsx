@@ -9,7 +9,7 @@ import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHea
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
 import type { CurrentUser } from '../types/profile'
 import { userService } from '../services/userService'
-import type { Product } from '../types/Product'
+import type { Product } from '../types/product'
 import { productService } from '../services/productService'
 
 // ─── Constants ────────────────────────────────────────────────────────────────

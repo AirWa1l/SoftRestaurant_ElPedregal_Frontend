@@ -3,7 +3,7 @@ import type {
   ProductListResponse,
   ProductResponse,
   ProductDeleteResponse,
-} from '../types/Product'
+} from '../types/product'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 const ACCESS_TOKEN_STORAGE_KEY = 'pedregal_access_token'
@@ -24,7 +24,9 @@ function getStoredAccessToken() {
 async function requestJson<T>(path: string, options: { method?: string; body?: unknown } = {}) {
   const headers: Record<string, string> = {}
 
-  if (options.body !== undefined) {
+  const isFormData = options.body instanceof FormData
+
+  if (options.body !== undefined && !isFormData) {
     headers['Content-Type'] = 'application/json'
   }
 
@@ -37,7 +39,12 @@ async function requestJson<T>(path: string, options: { method?: string; body?: u
     method: options.method ?? 'GET',
     headers,
     credentials: 'include',
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body:
+      options.body !== undefined
+        ? options.body instanceof FormData
+          ? options.body
+          : JSON.stringify(options.body)
+        : undefined,
   })
 
   const text = await response.text()
@@ -97,7 +104,7 @@ export const productService = {
     }
   },
 
-  async create(payload: Product): Promise<ProductResponse> {
+  async create(payload: Product | FormData): Promise<ProductResponse> {
     try {
       const result = await requestJson<{ message: string; product: Product }>('/products', {
         method: 'POST',
@@ -113,7 +120,7 @@ export const productService = {
       return {
         success: false,
         message:
-          message === 'sku_in_use'
+          message === 'id'
             ? 'Ya existe un producto registrado con este SKU.'
             : message === 'unauthorized'
             ? 'Debe iniciar sesión de nuevo.'

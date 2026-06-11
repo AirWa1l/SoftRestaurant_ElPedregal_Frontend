@@ -40,7 +40,6 @@ export function LoginForm({ onGoToRecovery, onGoToRegister }: Props) {
   const [form, setForm] = useState<LoginFormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<LoginFormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
-  const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function handleChange(field: keyof LoginFormData, value: string) {
@@ -71,7 +70,7 @@ export function LoginForm({ onGoToRecovery, onGoToRegister }: Props) {
       const response = await userService.login(form)
 
       if (response.success) {
-        setSubmitted(true)
+        navigate('/home')
       } else {
         setApiError(response.message)
       }
@@ -80,10 +79,6 @@ export function LoginForm({ onGoToRecovery, onGoToRegister }: Props) {
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  if (submitted) {
-    navigate('/home')
   }
 
   return (

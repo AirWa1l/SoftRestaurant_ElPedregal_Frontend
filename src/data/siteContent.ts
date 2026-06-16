@@ -35,7 +35,7 @@ export const siteContent = {
   navigation: [
     { label: 'Dashboard', href: '/home' },
     { label: 'Pedidos', href: '/home' },
-    { label: 'Productos', href: '/home' },
+    { label: 'Productos', href: '/products' },
     { label: 'Usuarios', href: '/home' },
     { label: 'Configuración', href: '/home' },
   ] satisfies NavigationLink[],

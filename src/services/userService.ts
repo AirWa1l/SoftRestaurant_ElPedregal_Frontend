@@ -121,16 +121,35 @@ export const userService = {
       await requestJson('/forgot-password', { method: 'POST', body: { email: payload.email } })
       return {
         success: true,
-        message: 'Se envió el enlace de recuperación al correo electrónico.',
+        message: 'Se envió un enlace de recuperación al correo. Revisa tu bandeja de entrada.',
       }
     } catch (error) {
       const message = (error as Error).message
       return {
         success: false,
         message:
-          message === 'invalid_or_expired_token' || message === 'user_not_found'
+          message === 'user_not_found'
             ? 'No existe una cuenta registrada con este correo electrónico.'
-            : 'Ocurrió un error al recuperar la contraseña.',
+            : 'Ocurrió un error al procesar tu solicitud.',
+      }
+    }
+  },
+
+  async resetPassword(payload: { token: string; password: string }): Promise<RecoveryPasswordResponse> {
+    try {
+      await requestJson('/reset-password', { method: 'POST', body: payload })
+      return {
+        success: true,
+        message: 'Contraseña actualizada correctamente. Inicia sesión con tu nueva contraseña.',
+      }
+    } catch (error) {
+      const message = (error as Error).message
+      return {
+        success: false,
+        message:
+          message === 'invalid_or_expired_token'
+            ? 'El enlace de recuperación es inválido o ha expirado.'
+            : 'No fue posible actualizar la contraseña.',
       }
     }
   },

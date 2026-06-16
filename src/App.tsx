@@ -4,6 +4,7 @@ import { LoginPage } from './pages/LoginPage'
 import { EditProfilePage } from './pages/EditProfilePage'
 import { ProductsPage } from './pages/ProductPage'
 import { ProductCreatePage } from './pages/ProductCreatePage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import './App.css'
 
 import { PrimeReactProvider } from 'primereact/api';
@@ -20,6 +21,7 @@ function App() {
           <Route path="/edit-profile" element={<EditProfilePage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/create" element={<ProductCreatePage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Routes>
       </BrowserRouter>
     </PrimeReactProvider>

@@ -2,22 +2,24 @@ export interface Product {
   id: string
   name: string
   category: string
-  price: number
-  stock: number
+  categoryName?: string
+  price: number | null
   description?: string
   imageUrl?: string
+  isAvailable: boolean
+  stock: number
 }
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
 
 export interface ProductFormErrors {
   name?: string
-  sku?: string
   category?: string
   price?: string
-  stock?: string
   description?: string
   imageUrl?: string
+  isAvailable?: string
+  stock?: string
 }
 
 // ─── Service responses ────────────────────────────────────────────────────────

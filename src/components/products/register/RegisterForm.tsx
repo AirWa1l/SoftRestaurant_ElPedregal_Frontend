@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { InputText } from 'primereact/inputtext'
 import { InputTextarea } from 'primereact/inputtextarea'
 import { InputNumber } from 'primereact/inputnumber'
@@ -6,8 +6,10 @@ import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
 import { Message } from 'primereact/message'
 import { classNames } from 'primereact/utils'
-import type { Product, ProductFormErrors } from '../../../types/product';
+import type { Product, ProductFormErrors } from '../../../types/product'
+import type { Category } from '../../../types/category'
 import { productService } from '../../../services/productService'
+import { categoryService } from '../../../services/categoryService'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -16,21 +18,11 @@ const INITIAL_FORM: Product = {
   name: '',
   category: '',
   price: null,
-  stock: null,
   description: '',
-  imageUrl: ''
+  imageUrl: '',
+  isAvailable: true,
+  stock: 0,
 }
-
-const CATEGORIES = [
-  { label: 'Bebidas', value: 'bebidas' },
-  { label: 'Carnes', value: 'carnes' },
-  { label: 'Lácteos', value: 'lacteos' },
-  { label: 'Panadería', value: 'panaderia' },
-  { label: 'Frutas y Verduras', value: 'frutas_verduras' },
-  { label: 'Snacks', value: 'snacks' },
-  { label: 'Aseo y Limpieza', value: 'aseo' },
-  { label: 'Otros', value: 'otros' },
-]
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
@@ -56,9 +48,7 @@ function validate(
     errors.price = 'El precio debe ser mayor a 0'
   }
 
-  if (form.stock === null || form.stock === undefined) {
-    errors.stock = 'El stock es obligatorio'
-  } else if (form.stock < 0) {
+  if (form.stock == null || form.stock < 0) {
     errors.stock = 'El stock no puede ser negativo'
   }
 
@@ -88,6 +78,7 @@ interface Props {
 
 export function ProductForm({ onSuccess, onCancel }: Props) {
   const [form, setForm] = useState<Product>(INITIAL_FORM)
+  const [categories, setCategories] = useState<Category[]>([])
   const [errors, setErrors] = useState<ProductFormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
@@ -95,6 +86,14 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [imagePreviewError, setImagePreviewError] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    categoryService.getAll().then((res) => {
+      if (res.success) setCategories(res.categories)
+    })
+  }, [])
+
+  const categoryOptions = categories.map((c) => ({ label: c.name, value: c.id }))
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -166,19 +165,30 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
     setIsSubmitting(true)
 
     try {
+      let result
+
       if (imageFile) {
         const formData = new FormData()
-
         formData.append('name', form.name)
         formData.append('category', form.category)
         formData.append('description', form.description)
         formData.append('price', String(form.price))
         formData.append('stock', String(form.stock))
         formData.append('image', imageFile)
-
-        await productService.create(formData as any)
+        result = await productService.create(formData)
       } else {
-        await productService.create(form)
+        result = await productService.create({
+          name: form.name,
+          category: form.category,
+          price: form.price,
+          description: form.description,
+          stock: form.stock,
+        })
+      }
+
+      if (!result.success) {
+        setApiError(result.message ?? 'Ocurrió un error al crear el producto.')
+        return
       }
 
       setSubmitted(true)
@@ -254,7 +264,7 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
           <Dropdown
             inputId="product-category"
             className={classNames('w-full', { 'p-invalid': errors.category })}
-            options={CATEGORIES}
+            options={categoryOptions}
             placeholder="Selecciona una categoría"
             value={form.category}
             onChange={(e) => handleChange('category', e.value)}
@@ -264,9 +274,9 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
           )}
         </div>
 
-        {/* ── Price & Stock ──────────────────────────────────────────────── */}
-        <div className="grid">
-          <div className="col-12 md:col-6 flex flex-column gap-2 mb-3">
+        {/* ── Price ──────────────────────────────────────────────── */}
+        <div className="grid grid-nogutter gap-3 mb-3">
+          <div className="col-12 md:col-6 flex flex-column gap-2">
             <label className="text-xs font-bold text-primary uppercase" htmlFor="product-price">
               Precio (COP) <span className="text-red-500">*</span>
             </label>
@@ -285,19 +295,19 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
               <small className="p-error block mt-1" role="alert">{errors.price}</small>
             )}
           </div>
-
-          <div className="col-12 md:col-6 flex flex-column gap-2 mb-3">
+          <div className="col-12 md:col-6 flex flex-column gap-2">
             <label className="text-xs font-bold text-primary uppercase" htmlFor="product-stock">
-              Stock disponible <span className="text-red-500">*</span>
+              Stock <span className="text-red-500">*</span>
             </label>
             <InputNumber
               inputId="product-stock"
               inputClassName={classNames('w-full', { 'p-invalid': errors.stock })}
               placeholder="0"
               value={form.stock}
-              onValueChange={(e) => handleChange('stock', e.value ?? null)}
+              onValueChange={(e) => handleChange('stock', e.value ?? 0)}
+              mode="decimal"
+              locale="es-CO"
               min={0}
-              suffix=" unid."
             />
             {errors.stock && (
               <small className="p-error block mt-1" role="alert">{errors.stock}</small>

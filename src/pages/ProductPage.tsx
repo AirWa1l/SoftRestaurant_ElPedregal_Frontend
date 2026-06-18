@@ -4,29 +4,17 @@ import { Toast } from 'primereact/toast'
 import { InputText } from 'primereact/inputtext'
 import { Dropdown } from 'primereact/dropdown'
 import { Skeleton } from 'primereact/skeleton'
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { useNavigate } from 'react-router-dom'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
 import type { CurrentUser } from '../types/profile'
+import type { Category } from '../types/category'
 import { userService } from '../services/userService'
+import { categoryService } from '../services/categoryService'
 import type { Product } from '../types/product'
 import { productService } from '../services/productService'
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const CATEGORY_OPTIONS = [
-  { label: 'Todas las categorías', value: '' },
-  { label: 'Bebidas', value: 'bebidas' },
-  { label: 'Carnes', value: 'carnes' },
-  { label: 'Lácteos', value: 'lacteos' },
-  { label: 'Panadería', value: 'panaderia' },
-  { label: 'Frutas y Verduras', value: 'frutas_verduras' },
-  { label: 'Snacks', value: 'snacks' },
-  { label: 'Aseo y Limpieza', value: 'aseo' },
-  { label: 'Otros', value: 'otros' },
-]
-
-// ─── Skeleton card ────────────────────────────────────────────────────────────
+import { canCreateProduct, canDeleteProduct, canEditProduct } from '../utils/roles'
 
 function ProductCardSkeleton() {
   return (
@@ -48,9 +36,7 @@ function ProductCardSkeleton() {
   )
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
-function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
+function EmptyState({ onCreateClick, canCreate }: { onCreateClick: () => void; canCreate: boolean }) {
   return (
     <div className="flex flex-column align-items-center justify-content-center gap-4 py-8 text-center">
       <div
@@ -62,102 +48,104 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
       <div className="flex flex-column gap-1">
         <h3 className="m-0 text-xl font-bold text-900">Sin productos aún</h3>
         <p className="m-0 text-sm text-600 max-w-20rem">
-          Agrega tu primer producto al catálogo y empieza a gestionarlo desde aquí.
+          {canCreate
+            ? 'Agrega tu primer producto al catálogo y empieza a gestionarlo desde aquí.'
+            : 'El catálogo aún no tiene productos disponibles.'}
         </p>
       </div>
-      <Button
-        label="Crear primer producto"
-        icon="pi pi-plus"
-        className="border-round-3xl font-bold"
-        onClick={onCreateClick}
-      />
+      {canCreate && (
+        <Button
+          label="Crear primer producto"
+          icon="pi pi-plus"
+          className="border-round-3xl font-bold"
+          onClick={onCreateClick}
+        />
+      )}
     </div>
   )
 }
 
-// ─── Product card ─────────────────────────────────────────────────────────────
-
-function ProductCard({ product, onEdit, onDelete }: {
-  product: Product
-  onEdit: (p: Product) => void
-  onDelete: (p: Product) => void
-}) {
+function ProductCard({ product, onEdit, onDelete, onAddToCart, quantityInCart, showActions, canEdit, canDelete, }: { product: Product; onEdit?: (p: Product) => void; onDelete?: (p: Product) => void; onAddToCart?: (p: Product) => void; quantityInCart?: number; showActions?: boolean; canEdit?: boolean; canDelete?: boolean }) {
   const [imgError, setImgError] = useState(false)
+
+  const badgeClass = product.isAvailable ? 'text-xs font-semibold px-2 py-1 border-round-lg bg-green-100 text-green-700' : 'text-xs font-semibold px-2 py-1 border-round-lg bg-red-100 text-red-600'
 
   return (
     <div className="surface-card border-1 surface-border border-round-xl p-3 flex flex-column gap-3">
-      {/* Image */}
-      <div
-        className="border-round-lg overflow-hidden surface-100 flex align-items-center justify-content-center"
-        style={{ height: '140px' }}
-      >
+      <div className="border-round-lg overflow-hidden surface-100 flex align-items-center justify-content-center" style={{ height: '140px' }}>
         {product.imageUrl && !imgError ? (
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            onError={() => setImgError(true)}
-          />
+          <img src={product.imageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={() => setImgError(true)} />
         ) : (
           <span className="text-4xl">🛒</span>
         )}
       </div>
 
-      {/* Info */}
       <div className="flex flex-column gap-1">
         <span className="font-bold text-900 text-sm line-clamp-1">{product.name}</span>
+        {product.categoryName && <span className="text-xs text-500">{product.categoryName}</span>}
       </div>
 
-      {/* Price & stock */}
       <div className="flex justify-content-between align-items-center">
-        <span className="text-primary font-bold text-base">
-          {product.price.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
-        </span>
-        <span className={`text-xs font-semibold px-2 py-1 border-round-lg ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-          {product.stock > 0 ? `${product.stock} unid.` : 'Agotado'}
-        </span>
+        <span className="text-primary font-bold text-base">{(product.price || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}</span>
+        <span className={badgeClass}>{product.isAvailable ? 'Disponible' : 'No disponible'}</span>
       </div>
 
-      {/* Actions */}
+      <div className="flex justify-content-between align-items-center gap-2 text-xs text-600">
+        <span>{product.stock > 0 ? product.stock + ' en stock' : 'Agotado'}</span>
+        {quantityInCart ? <span>{quantityInCart} en pedido</span> : null}
+      </div>
+
       <div className="flex gap-2">
-        <Button
-          label="Editar"
-          icon="pi pi-pencil"
-          severity="secondary"
-          outlined
-          size="small"
-          className="flex-1 border-round-lg font-semibold"
-          onClick={() => onEdit(product)}
-        />
-        <Button
-          icon="pi pi-trash"
-          severity="danger"
-          outlined
-          size="small"
-          className="border-round-lg"
-          onClick={() => onDelete(product)}
-          tooltip="Eliminar"
-          tooltipOptions={{ position: 'top' }}
-        />
+        {showActions && (
+          <div className="flex gap-2">
+            {canEdit && (
+              <Button label="Editar" icon="pi pi-pencil" severity="secondary" outlined size="small" className="flex-1 border-round-lg font-semibold" onClick={() => onEdit && onEdit(product)} />
+            )}
+            {canDelete && (
+              <Button icon="pi pi-trash" severity="danger" outlined size="small" className="border-round-lg" onClick={() => onDelete && onDelete(product)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
+            )}
+          </div>
+        )}
+
+        {!showActions && onAddToCart && (
+          <Button label={quantityInCart ? ('Añadir de nuevo (' + quantityInCart + ')') : 'Agregar al pedido'} icon="pi pi-shopping-cart" severity="success" className="w-full border-round-lg" disabled={!product.isAvailable || product.stock === 0 || (quantityInCart || 0) >= product.stock} onClick={() => onAddToCart(product)} />
+        )}
       </div>
     </div>
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export function ProductsPage() {
   const navigate = useNavigate()
-  const toast = useRef<any>(null)
+  const toast = useRef<Toast>(null)
 
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [cartItems, setCartItems] = useState<Record<string, number>>({})
   const [isLoading, setIsLoading] = useState(true)
 
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
 
-  // Load user & products
+  const userRole = currentUser?.role ?? 'user'
+  const cartCount = useMemo(
+    () => Object.values(cartItems).reduce((sum, value) => sum + value, 0),
+    [cartItems]
+  )
+  const canCreate = canCreateProduct(userRole)
+  const canEdit = canEditProduct(userRole)
+  const canDelete = canDeleteProduct(userRole)
+  const showActions = canEdit || canDelete
+
+  const categoryOptions = useMemo(
+    () => [
+      { label: 'Todas las categorías', value: '' },
+      ...categories.map((c) => ({ label: c.name, value: c.id })),
+    ],
+    [categories]
+  )
+
   useEffect(() => {
     let mounted = true
 
@@ -169,12 +157,31 @@ export function ProductsPage() {
           setCurrentUser(userRes.user)
         }
 
-        const res = await productService.getAll()
+        if (typeof window !== 'undefined') {
+          const cachedCart = window.localStorage.getItem('pedregal_cart')
+          if (cachedCart) {
+            try {
+              setCartItems(JSON.parse(cachedCart))
+            } catch {
+              setCartItems({})
+            }
+          }
+        }
+
+        const [productsRes, categoriesRes] = await Promise.all([
+          productService.getAll(),
+          categoryService.getAll(),
+        ])
+
         if (mounted) {
-          if (res.success) {
-            setProducts(res.products || [])
+          if (categoriesRes.success) {
+            setCategories(categoriesRes.categories)
+          }
+
+          if (productsRes.success) {
+            setProducts(productsRes.products || [])
           } else {
-            toast.current?.show({ severity: 'error', summary: 'Error', detail: res.message, life: 4000 })
+            toast.current?.show({ severity: 'error', summary: 'Error', detail: productsRes.message, life: 4000 })
             setProducts([])
           }
         }
@@ -191,7 +198,6 @@ export function ProductsPage() {
     return () => { mounted = false }
   }, [])
 
-  // Filter
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const matchSearch =
@@ -206,9 +212,50 @@ export function ProductsPage() {
     navigate(`/products/${product.id}/edit`)
   }
 
+  function handleAddToCart(product: Product) {
+    const currentQty = cartItems[product.id] ?? 0
+    if (!product.isAvailable || product.stock === 0 || currentQty >= product.stock) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'No disponible',
+        detail: 'No se puede agregar más de este producto al pedido.',
+        life: 3000,
+      })
+      return
+    }
+
+    const nextCart = {
+      ...cartItems,
+      [product.id]: currentQty + 1,
+    }
+    setCartItems(nextCart)
+    window.localStorage.setItem('pedregal_cart', JSON.stringify(nextCart))
+    toast.current?.show({
+      severity: 'success',
+      summary: 'Agregado',
+      detail: `${product.name} se agregó al pedido.`,
+      life: 3000,
+    })
+  }
+
   function handleDelete(product: Product) {
-    // TODO: wire up DeleteProductDialog
-    toast.current?.show({ severity: 'warn', summary: 'Eliminar', detail: `Función próximamente: ${product.name}`, life: 3000 })
+    confirmDialog({
+      message: `¿Eliminar "${product.name}"? Esta acción no se puede deshacer.`,
+      header: 'Confirmar eliminación',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClassName: 'p-button-danger',
+      acceptLabel: 'Eliminar',
+      rejectLabel: 'Cancelar',
+      accept: async () => {
+        const result = await productService.remove(product.id)
+        if (result.success) {
+          setProducts((prev) => prev.filter((p) => p.id !== product.id))
+          toast.current?.show({ severity: 'success', summary: 'Eliminado', detail: result.message, life: 3000 })
+        } else {
+          toast.current?.show({ severity: 'error', summary: 'Error', detail: result.message, life: 4000 })
+        }
+      },
+    })
   }
 
   return (
@@ -223,26 +270,28 @@ export function ProductsPage() {
 
       <main className="edit-profile-main">
         <Toast ref={toast} />
+        <ConfirmDialog />
 
         <div className="edit-profile-layout">
-          {/* ── Header ──────────────────────────────────────────────────── */}
           <div className="flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
             <div>
               <h1 className="text-2xl font-bold text-900 m-0">Productos</h1>
               <p className="text-sm text-600 m-0 mt-1">
                 {isLoading ? 'Cargando catálogo…' : `${products.length} producto${products.length !== 1 ? 's' : ''} en total`}
+                {!isLoading && userRole === 'user' && cartCount > 0 && ` · ${cartCount} en tu pedido`}
               </p>
             </div>
 
-            <Button
-              label="Nuevo producto"
-              icon="pi pi-plus"
-              className="border-round-3xl font-bold"
-              onClick={() => navigate('/products/create')}
-            />
+            {canCreate && (
+              <Button
+                label="Nuevo producto"
+                icon="pi pi-plus"
+                className="border-round-3xl font-bold"
+                onClick={() => navigate('/products/create')}
+              />
+            )}
           </div>
 
-          {/* ── Filters ─────────────────────────────────────────────────── */}
           {!isLoading && products.length > 0 && (
             <div className="flex gap-3 flex-wrap mb-4">
               <span className="p-input-icon-left flex-1" style={{ minWidth: '180px' }}>
@@ -255,7 +304,7 @@ export function ProductsPage() {
                 />
               </span>
               <Dropdown
-                options={CATEGORY_OPTIONS}
+                options={categoryOptions}
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.value)}
                 placeholder="Categoría"
@@ -265,7 +314,6 @@ export function ProductsPage() {
             </div>
           )}
 
-          {/* ── Grid ────────────────────────────────────────────────────── */}
           {isLoading ? (
             <div className="grid">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -275,7 +323,7 @@ export function ProductsPage() {
               ))}
             </div>
           ) : filtered.length === 0 && products.length === 0 ? (
-            <EmptyState onCreateClick={() => navigate('/products/create')} />
+            <EmptyState onCreateClick={() => navigate('/products/create')} canCreate={canCreate} />
           ) : filtered.length === 0 ? (
             <div className="flex flex-column align-items-center justify-content-center gap-3 py-8 text-center">
               <span className="text-4xl">🔍</span>
@@ -296,6 +344,11 @@ export function ProductsPage() {
                     product={product}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onAddToCart={!showActions ? handleAddToCart : undefined}
+                    quantityInCart={cartItems[product.id] ?? 0}
+                    showActions={showActions}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
                   />
                 </div>
               ))}

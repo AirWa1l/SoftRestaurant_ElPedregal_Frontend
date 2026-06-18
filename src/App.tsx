@@ -4,6 +4,7 @@ import { LoginPage } from './pages/LoginPage'
 import { EditProfilePage } from './pages/EditProfilePage'
 import { ProductsPage } from './pages/ProductPage'
 import { ProductCreatePage } from './pages/ProductCreatePage'
+import { ProductEditPage } from './pages/ProductEditPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import './App.css'
 
@@ -21,6 +22,7 @@ function App() {
           <Route path="/edit-profile" element={<EditProfilePage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/create" element={<ProductCreatePage />} />
+          <Route path="/products/:id/edit" element={<ProductEditPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Routes>
       </BrowserRouter>

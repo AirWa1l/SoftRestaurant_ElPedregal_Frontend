@@ -86,12 +86,19 @@ function mapApiErrorMessage(message: string, fallback: string): string {
 function parsePrice(value: unknown): number | null {
   if (typeof value === 'number') return value
   if (typeof value === 'string') return Number(value)
+
+  // Detectar si es un objeto Decimal128 de MongoDB ({ $numberDecimal: "..." })
+  if (value && typeof value === 'object' && '$numberDecimal' in value) {
+    return Number((value as any).$numberDecimal)
+  }
+
   if (value && typeof (value as any).toString === 'function') {
     const parsed = Number((value as any).toString())
     return Number.isNaN(parsed) ? null : parsed
   }
   return null
 }
+
 
 function parseStock(value: unknown): number {
   if (typeof value === 'number') return value

@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
-import { ProductForm } from '../components/products/register/RegisterForm'
+import { ProductEditForm } from '../components/products/edit/EditForm'
 import type { CurrentUser } from '../types/profile'
 import { Button } from 'primereact/button'
 import { userService } from '../services/userService'
-import { canCreateProduct } from '../utils/roles'
+import { canEditProduct } from '../utils/roles'
 
-export function ProductCreatePage() {
+export function ProductEditPage() {
   const navigate = useNavigate()
+  const { id } = useParams<{ id: string }>()
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [isCheckingAccess, setIsCheckingAccess] = useState(true)
 
@@ -21,7 +22,7 @@ export function ProductCreatePage() {
 
       if (res.success && res.user) {
         setCurrentUser(res.user)
-        if (!canCreateProduct(res.user.role)) {
+        if (!canEditProduct(res.user.role)) {
           navigate('/products')
         }
       } else {
@@ -33,6 +34,11 @@ export function ProductCreatePage() {
 
     return () => { mounted = false }
   }, [navigate])
+
+  if (!id) {
+    navigate('/products')
+    return null
+  }
 
   if (isCheckingAccess) {
     return null
@@ -58,11 +64,12 @@ export function ProductCreatePage() {
               rounded
               onClick={() => navigate('/products')}
             />
-            <h1 className="text-2xl font-bold text-900 m-0">Nuevo producto</h1>
+            <h1 className="text-2xl font-bold text-900 m-0">Editar producto</h1>
           </div>
 
           <section className="edit-profile-card">
-            <ProductForm
+            <ProductEditForm
+              productId={id}
               onSuccess={() => navigate('/products')}
               onCancel={() => navigate('/products')}
             />

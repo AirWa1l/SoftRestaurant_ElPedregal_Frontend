@@ -1,6 +1,8 @@
 import type { RegisterPayload, RegisterResponse } from '../types/register'
 import type { RecoveryPasswordPayload, RecoveryPasswordResponse } from '../types/recoveryPassword'
 import type { LoginPayload, LoginResponse } from '../types/login'
+import type { UserRole } from '../utils/roles'
+import { isUserRole } from '../utils/roles'
 import type {
   CurrentUserResponse,
   CurrentUser,
@@ -11,7 +13,9 @@ import type {
   ProfileFormErrors,
 } from '../types/profile'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/auth'
+const API_BASE_URL_RAW = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+const API_BASE_URL = API_BASE_URL_RAW.replace(/\/auth$/, '')
+const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_BASE_URL || `${API_BASE_URL}/auth`
 const ACCESS_TOKEN_STORAGE_KEY = 'pedregal_access_token'
 
 let cachedCurrentUser: CurrentUser | null = null
@@ -36,13 +40,19 @@ function setStoredAccessToken(token: string | null) {
   }
 }
 
-function buildCurrentUser(user: { firstName?: string; lastName?: string; email: string }) {
+function buildCurrentUser(user: {
+  firstName?: string
+  lastName?: string
+  email: string
+  role?: string
+}) {
   const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Usuario'
   const initials = `${(user.firstName?.[0] ?? '').toUpperCase()}${(user.lastName?.[0] ?? '').toUpperCase()}` || '--'
+  const role: UserRole = user.role && isUserRole(user.role) ? user.role : 'user'
   return {
     initials,
     name,
-    role: 'Empleado',
+    role,
     email: user.email,
   }
 }
@@ -77,7 +87,7 @@ async function requestJson<T>(path: string, options: { method?: string; body?: u
     headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${AUTH_API_BASE_URL}${path}`, {
     method: options.method ?? 'GET',
     headers,
     credentials: 'include',
@@ -249,7 +259,10 @@ export const userService = {
         body: payload,
       })
 
-      const updatedUser = buildCurrentUser(result.profile)
+      const updatedUser = buildCurrentUser({
+        ...result.profile,
+        role: cachedCurrentUser?.role,
+      })
       emitCurrentUser(updatedUser)
 
       return {

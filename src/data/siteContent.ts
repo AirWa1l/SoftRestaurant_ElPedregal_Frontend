@@ -34,7 +34,7 @@ export const siteContent = {
   },
   navigation: [
     { label: 'Dashboard', href: '/home' },
-    { label: 'Pedidos', href: '/home' },
+    { label: 'Pedidos', href: '/orders' },
     { label: 'Productos', href: '/products' },
     { label: 'Usuarios', href: '/home' },
     { label: 'Configuración', href: '/home' },

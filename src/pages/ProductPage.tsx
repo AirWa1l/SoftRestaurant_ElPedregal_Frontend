@@ -178,8 +178,23 @@ export function ProductsPage() {
             setCategories(categoriesRes.categories)
           }
 
+          let adjustments: Record<string, number> = {}
+          const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
+          if (cachedAdjustments) {
+            try {
+              adjustments = JSON.parse(cachedAdjustments)
+            } catch {}
+          }
+
           if (productsRes.success) {
-            setProducts(productsRes.products || [])
+            const adjusted = (productsRes.products || []).map((p) => {
+              const adj = adjustments[p.id] || 0
+              return {
+                ...p,
+                stock: Math.max(0, p.stock - adj),
+              }
+            })
+            setProducts(adjusted)
           } else {
             toast.current?.show({ severity: 'error', summary: 'Error', detail: productsRes.message, life: 4000 })
             setProducts([])
@@ -355,6 +370,31 @@ export function ProductsPage() {
             </div>
           )}
         </div>
+
+        {/* Floating banner/button for new order if cart count > 0 */}
+        {!showActions && cartCount > 0 && (
+          <div
+            className="fixed bottom-0 right-0 m-4 p-3 border-round-xl shadow-6 flex align-items-center gap-3 z-5"
+            style={{
+              minWidth: '300px',
+              background: 'linear-gradient(135deg, #1e446c 0%, #1a3f66 100%)',
+              color: '#fff',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+          >
+            <div className="flex flex-column flex-1">
+              <span className="font-bold text-sm">Pedido en curso</span>
+              <span className="text-xs text-200">{cartCount} producto{cartCount !== 1 ? 's' : ''} seleccionado{cartCount !== 1 ? 's' : ''}</span>
+            </div>
+            <Button
+              label="Crear Pedido"
+              icon="pi pi-arrow-right"
+              severity="success"
+              className="border-round-lg font-bold text-xs"
+              onClick={() => navigate('/orders/new')}
+            />
+          </div>
+        )}
       </main>
     </div>
   )

@@ -246,6 +246,15 @@ export function OrdersPage() {
                           <span className="font-bold text-sm text-900">{o.total}</span>
                           <div className="flex gap-2 align-items-center">
                             <Button
+                              icon="pi pi-pencil"
+                              severity="secondary"
+                              text
+                              size="small"
+                              className="p-1"
+                              onClick={() => navigate(`/orders/${o.number}/edit`)}
+                              tooltip="Editar"
+                            />
+                            <Button
                               label="Preparar"
                               icon="pi pi-arrow-right"
                               iconPos="right"
@@ -311,6 +320,15 @@ export function OrdersPage() {
                         <div className="flex justify-content-between align-items-center mt-2 pt-2 border-top-1 surface-border">
                           <span className="font-bold text-sm text-900">{o.total}</span>
                           <div className="flex gap-1 align-items-center">
+                            <Button
+                              icon="pi pi-pencil"
+                              severity="secondary"
+                              text
+                              size="small"
+                              className="p-1"
+                              onClick={() => navigate(`/orders/${o.number}/edit`)}
+                              tooltip="Editar"
+                            />
                             <Button
                               icon="pi pi-arrow-left"
                               severity="secondary"
@@ -387,6 +405,15 @@ export function OrdersPage() {
                         <div className="flex justify-content-between align-items-center mt-2 pt-2 border-top-1 surface-border">
                           <span className="font-bold text-sm text-900">{o.total}</span>
                           <div className="flex gap-1 align-items-center">
+                            <Button
+                              icon="pi pi-pencil"
+                              severity="secondary"
+                              text
+                              size="small"
+                              className="p-1"
+                              onClick={() => navigate(`/orders/${o.number}/edit`)}
+                              tooltip="Editar"
+                            />
                             <Button
                               icon="pi pi-arrow-left"
                               severity="secondary"

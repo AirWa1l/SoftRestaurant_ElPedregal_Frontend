@@ -238,6 +238,14 @@ export function DashboardHomePage() {
                         </td>
                         <td>
                           <div className="flex gap-2">
+                            <Button
+                              icon="pi pi-pencil"
+                              severity="info"
+                              size="small"
+                              text
+                              onClick={() => navigate(`/orders/${order.number}/edit`)}
+                              tooltip="Editar"
+                            />
                             {order.status !== 'Facturado' && (
                               <Button
                                 icon="pi pi-arrow-right"

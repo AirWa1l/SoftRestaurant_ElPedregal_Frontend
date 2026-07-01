@@ -6,6 +6,7 @@ import { Skeleton } from 'primereact/skeleton'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
 import { userService } from '../services/userService'
+import { CancelOrderDialog } from '../components/orders/CancelOrderDialog'
 import type { CurrentUser } from '../types/profile'
 import { siteContent } from '../data/siteContent'
 
@@ -20,6 +21,7 @@ interface Order {
   time?: string
   notes?: string
   items?: Array<{ productId: string; quantity: number }>
+  cancelReason?: string
 }
 
 export function OrdersPage() {
@@ -28,6 +30,11 @@ export function OrdersPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  // Cancel dialog state
+  const [cancelDialogVisible, setCancelDialogVisible] = useState(false)
+  const [orderToCancel, setOrderToCancel] = useState<Order | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
 
   // Drag and Drop active column state for highlight
   const [draggedOverCol, setDraggedOverCol] = useState<string | null>(null)
@@ -92,9 +99,17 @@ export function OrdersPage() {
     })
   }
 
-  // Delete/Cancel order
-  function cancelOrder(orderNumber: string) {
-    const targetOrder = orders.find((o) => o.number === orderNumber)
+  // Cancel dialog handlers
+  function handleCancelClick(order: Order) {
+    setOrderToCancel(order)
+    setCancelDialogVisible(true)
+  }
+
+  function handleConfirmCancel(reason: string) {
+    if (!orderToCancel) return
+    setIsCancelling(true)
+
+    const targetOrder = orders.find((o) => o.number === orderToCancel.number)
     if (targetOrder && targetOrder.items) {
       const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
       if (cachedAdjustments) {
@@ -110,13 +125,19 @@ export function OrdersPage() {
       }
     }
 
-    const updated = orders.filter((o) => o.number !== orderNumber)
-    saveOrders(updated)
+    const updated = orders.map((o) =>
+      o.number === orderToCancel.number ? { ...o, cancelReason: reason } : o
+    )
+    const finalOrders = updated.filter((o) => o.number !== orderToCancel.number)
+    saveOrders(finalOrders)
+    setIsCancelling(false)
+    setCancelDialogVisible(false)
+    setOrderToCancel(null)
     toast.current?.show({
       severity: 'warn',
-      summary: 'Pedido Eliminado',
-      detail: `El pedido #${orderNumber} fue cancelado y se restituyó el stock.`,
-      life: 2500,
+      summary: 'Pedido Cancelado',
+      detail: `El pedido #${orderToCancel.number} fue cancelado. Motivo: ${reason}`,
+      life: 3000,
     })
   }
 
@@ -269,7 +290,7 @@ export function OrdersPage() {
                               text
                               size="small"
                               className="p-1"
-                              onClick={() => cancelOrder(o.number)}
+                              onClick={() => handleCancelClick(o)}
                             />
                           </div>
                         </div>
@@ -354,7 +375,7 @@ export function OrdersPage() {
                               text
                               size="small"
                               className="p-1"
-                              onClick={() => cancelOrder(o.number)}
+                              onClick={() => handleCancelClick(o)}
                             />
                           </div>
                         </div>
@@ -437,7 +458,7 @@ export function OrdersPage() {
                               text
                               size="small"
                               className="p-1"
-                              onClick={() => cancelOrder(o.number)}
+                              onClick={() => handleCancelClick(o)}
                             />
                           </div>
                         </div>
@@ -478,6 +499,19 @@ export function OrdersPage() {
             </div>
           </div>
         )}
+
+        {/* Cancel Order Dialog */}
+        <CancelOrderDialog
+          visible={cancelDialogVisible}
+          onHide={() => {
+            setCancelDialogVisible(false)
+            setOrderToCancel(null)
+          }}
+          order={orderToCancel}
+          onConfirm={handleConfirmCancel}
+          isProcessing={isCancelling}
+          userRole={currentUser?.role ?? 'user'}
+        />
 
       </main>
     </div>

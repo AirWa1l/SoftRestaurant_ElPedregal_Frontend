@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
 import { DeleteAccountDialog } from '../components/profile/DeleteAccountDialog'
+import { ChangePasswordDialog } from '../components/profile/ChangePasswordDialog'
 
 const INITIAL_FORM: ProfileFormData = {
   firstName: '',
@@ -50,6 +51,7 @@ export function EditProfilePage() {
   const [isDeleteDialogVisible, setIsDeleteDialogVisible] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
+  const [isChangePasswordDialogVisible, setIsChangePasswordDialogVisible] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -304,6 +306,18 @@ export function EditProfilePage() {
                   className="w-full border-round-xl font-bold edit-profile-save"
                 />
 
+                <div className="flex gap-3 mt-4">
+                  <Button
+                    type="button"
+                    label="Cambiar Contraseña"
+                    icon="pi pi-lock"
+                    severity="secondary"
+                    outlined
+                    className="w-full border-round-xl"
+                    onClick={() => setIsChangePasswordDialogVisible(true)}
+                  />
+                </div>
+
                 <div className="edit-profile-danger-actions">
                   <Button
                     type="button"
@@ -326,6 +340,11 @@ export function EditProfilePage() {
         onConfirm={handleConfirmDeleteAccount}
         isProcessing={isDeleting}
         serverError={deleteAccountError}
+      />
+
+      <ChangePasswordDialog
+        visible={isChangePasswordDialogVisible}
+        onHide={() => setIsChangePasswordDialogVisible(false)}
       />
     </div>
   )

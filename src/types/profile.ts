@@ -1,3 +1,5 @@
+import type { UserRole } from '../utils/roles'
+
 export type ProfileFormData = {
   firstName: string
   lastName: string
@@ -28,7 +30,7 @@ export type DeleteAccountResponse = {
 export type CurrentUser = {
   initials: string
   name: string
-  role: string
+  role: UserRole
   email: string
 }
 

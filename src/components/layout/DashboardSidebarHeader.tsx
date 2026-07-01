@@ -11,9 +11,9 @@ export function DashboardSidebarHeader() {
 
       <nav className="dashboard-nav" aria-label="Navegación principal">
         {siteContent.navigation.map((link) => (
-          <a key={link.label} href={link.href} className="dashboard-nav__link">
+          <Link key={link.label} to={link.href} className="dashboard-nav__link">
             {link.label}
-          </a>
+          </Link>
         ))}
       </nav>
     </header>

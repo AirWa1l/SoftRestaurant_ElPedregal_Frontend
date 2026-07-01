@@ -6,23 +6,10 @@ import { Skeleton } from 'primereact/skeleton'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
 import { userService } from '../services/userService'
+import { orderService } from '../services/orderService'
 import { CancelOrderDialog } from '../components/orders/CancelOrderDialog'
 import type { CurrentUser } from '../types/profile'
-import { siteContent } from '../data/siteContent'
-
-type OrderStatus = 'Pendiente' | 'Preparación' | 'Entregado' | 'Facturado'
-
-interface Order {
-  number: string
-  table: string
-  products: string
-  total: string
-  status: OrderStatus
-  time?: string
-  notes?: string
-  items?: Array<{ productId: string; quantity: number }>
-  cancelReason?: string
-}
+import type { Order, OrderStatusFrontend } from '../types/order'
 
 export function OrdersPage() {
   const navigate = useNavigate()
@@ -52,44 +39,29 @@ export function OrdersPage() {
 
     void loadCurrentUser()
 
-    // Load orders
-    if (typeof window !== 'undefined') {
-      const cached = window.localStorage.getItem('pedregal_orders')
-      if (cached) {
-        try {
-          setOrders(JSON.parse(cached))
-        } catch {
-          setOrders([])
-        }
-      } else {
-        const initial: Order[] = []
-        setOrders(initial)
-        window.localStorage.setItem('pedregal_orders', JSON.stringify(initial))
+    // Load orders from service (simulated via localStorage)
+    async function loadOrders() {
+      const response = await orderService.getAll()
+      if (!isMounted) return
+      if (response.success) {
+        setOrders(response.orders)
       }
+      setIsLoading(false)
     }
-    
-    setIsLoading(false)
+    void loadOrders()
 
     return () => {
       isMounted = false
     }
   }, [])
 
-  // Sync state helper
-  function saveOrders(updatedList: Order[]) {
-    setOrders(updatedList)
-    window.localStorage.setItem('pedregal_orders', JSON.stringify(updatedList))
-  }
-
   // Explicit move status (both forward and backward)
-  function moveStatus(orderNumber: string, nextStatus: OrderStatus) {
-    const updated = orders.map((o) => {
-      if (o.number === orderNumber) {
-        return { ...o, status: nextStatus }
-      }
-      return o
-    })
-    saveOrders(updated)
+  async function moveStatus(orderNumber: string, nextStatus: OrderStatusFrontend) {
+    await orderService.updateStatus(orderNumber, nextStatus)
+    const response = await orderService.getAll()
+    if (response.success) {
+      setOrders(response.orders)
+    }
 
     toast.current?.show({
       severity: 'success',
@@ -105,7 +77,7 @@ export function OrdersPage() {
     setCancelDialogVisible(true)
   }
 
-  function handleConfirmCancel(reason: string) {
+  async function handleConfirmCancel(reason: string) {
     if (!orderToCancel) return
     setIsCancelling(true)
 
@@ -125,11 +97,12 @@ export function OrdersPage() {
       }
     }
 
-    const updated = orders.map((o) =>
-      o.number === orderToCancel.number ? { ...o, cancelReason: reason } : o
-    )
-    const finalOrders = updated.filter((o) => o.number !== orderToCancel.number)
-    saveOrders(finalOrders)
+    await orderService.remove(orderToCancel.number)
+    const response = await orderService.getAll()
+    if (response.success) {
+      setOrders(response.orders)
+    }
+
     setIsCancelling(false)
     setCancelDialogVisible(false)
     setOrderToCancel(null)
@@ -160,7 +133,7 @@ export function OrdersPage() {
     setDraggedOverCol(null)
   }
 
-  function handleDrop(e: React.DragEvent, targetStatus: OrderStatus) {
+  function handleDrop(e: React.DragEvent, targetStatus: OrderStatusFrontend) {
     e.preventDefault()
     setDraggedOverCol(null)
     const orderNumber = e.dataTransfer.getData('text/plain')
@@ -484,9 +457,12 @@ export function OrdersPage() {
                 text
                 severity="danger"
                 className="p-0 text-xs font-semibold"
-                onClick={() => {
+                onClick={async () => {
                   const activeOnly = orders.filter((o) => o.status !== 'Facturado')
-                  saveOrders(activeOnly)
+                  for (const billed of orders.filter((o) => o.status === 'Facturado')) {
+                    await orderService.remove(billed.number)
+                  }
+                  setOrders(activeOnly)
                 }}
               />
             </div>

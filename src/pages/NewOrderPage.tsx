@@ -277,6 +277,7 @@ export function NewOrderPage() {
       const items = Object.values(cart).map((item) => ({
         product: item.product.id,
         quantity: item.quantity,
+        name: item.product.name,
       }))
 
       const response = await orderService.create({

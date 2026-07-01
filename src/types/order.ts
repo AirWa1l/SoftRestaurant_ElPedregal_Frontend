@@ -26,13 +26,13 @@ export interface OrderResponse {
 }
 
 export interface CreateOrderPayload {
-  items: Array<{ product: string; quantity: number }>
+  items: Array<{ product: string; quantity: number; name?: string }>
   table?: string
   notes?: string
 }
 
 export interface UpdateOrderPayload {
-  items?: Array<{ product: string; quantity: number }>
+  items?: Array<{ product: string; quantity: number; name?: string }>
   table?: string
   notes?: string
 }

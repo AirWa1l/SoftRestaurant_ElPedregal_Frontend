@@ -181,7 +181,7 @@ export const orderService = {
       const orderNumber = generateLocalOrderNumber()
       const productsSummary = buildProductsSummary(
         (payload.items || []).map((item) => ({
-          name: item.product,
+          name: item.name || item.product,
           quantity: item.quantity,
         }))
       )
@@ -198,6 +198,7 @@ export const orderService = {
         items: payload.items.map((item) => ({
           productId: item.product,
           quantity: item.quantity,
+          name: item.name,
         })),
       }
 
@@ -228,9 +229,10 @@ export const orderService = {
         updated.items = payload.items.map((item) => ({
           productId: item.product,
           quantity: item.quantity,
+          name: item.name,
         }))
         updated.products = buildProductsSummary(payload.items.map((item) => ({
-          name: item.product,
+          name: item.name || item.product,
           quantity: item.quantity,
         })))
       }

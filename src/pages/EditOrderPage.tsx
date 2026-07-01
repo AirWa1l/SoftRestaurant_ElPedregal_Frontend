@@ -304,6 +304,7 @@ export function EditOrderPage() {
       const items = Object.values(cart).map((item) => ({
         product: item.product.id,
         quantity: item.quantity,
+        name: item.product.name,
       }))
 
       // 1. Calculate stock difference and update local adjustments

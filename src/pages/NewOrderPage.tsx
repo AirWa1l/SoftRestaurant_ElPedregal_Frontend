@@ -9,6 +9,7 @@ import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFoo
 import { userService } from '../services/userService'
 import { categoryService } from '../services/categoryService'
 import { productService } from '../services/productService'
+import { orderService } from '../services/orderService'
 import type { CurrentUser } from '../types/profile'
 import type { Category } from '../types/category'
 import type { Product } from '../types/product'
@@ -272,78 +273,58 @@ export function NewOrderPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API submission
-    setTimeout(() => {
-      try {
-        const cachedOrders = window.localStorage.getItem('pedregal_orders')
-        let orderList: any[] = []
-        if (cachedOrders) {
-          try {
-            orderList = JSON.parse(cachedOrders)
-          } catch {
-            orderList = []
-          }
-        }
+    try {
+      const items = Object.values(cart).map((item) => ({
+        product: item.product.id,
+        quantity: item.quantity,
+        name: item.product.name,
+      }))
 
-        const nextNum = (orderList.length + 1).toString().padStart(3, '0')
-        const productsSummary = Object.values(cart)
-          .map((item) => `${item.product.name} x${item.quantity}`)
-          .join(' · ')
+      const response = await orderService.create({
+        items,
+        table: customerName.trim(),
+        notes: notes.trim(),
+      })
 
-        // Save local stock adjustments (deduct stock on pending order creation)
-        const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
-        let adjustments: Record<string, number> = {}
-        if (cachedAdjustments) {
-          try {
-            adjustments = JSON.parse(cachedAdjustments)
-          } catch {}
-        }
-        Object.values(cart).forEach((item) => {
-          adjustments[item.product.id] = (adjustments[item.product.id] || 0) + item.quantity
-        })
-        window.localStorage.setItem('pedregal_stock_adjustments', JSON.stringify(adjustments))
-
-        const newOrder = {
-          number: nextNum,
-          table: customerName.trim(),
-          products: productsSummary,
-          total: subtotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }),
-          status: 'Pendiente',
-          time: 'hace 1 min',
-          notes: notes.trim(),
-          items: Object.values(cart).map((item) => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-          })),
-        }
-
-        const updatedOrders = [newOrder, ...orderList]
-        window.localStorage.setItem('pedregal_orders', JSON.stringify(updatedOrders))
-        
-        // Clear catalog cart
-        window.localStorage.removeItem('pedregal_cart')
-
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Pedido creado',
-          detail: `Pedido #${nextNum} registrado correctamente.`,
-          life: 3000,
-        })
-
-        setTimeout(() => {
-          navigate('/orders') // Redirect directly to OrdersPage
-        }, 800)
-
-      } catch {
-        setIsSubmitting(false)
-        toast.current?.show({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Hubo un problema guardando el pedido.',
-          life: 3000,
-        })
+      if (!response.success) {
+        throw new Error(response.message || 'Error al crear el pedido')
       }
-    }, 1500)
+
+      // Save local stock adjustments
+      const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
+      let adjustments: Record<string, number> = {}
+      if (cachedAdjustments) {
+        try { adjustments = JSON.parse(cachedAdjustments) } catch {}
+      }
+      Object.values(cart).forEach((item) => {
+        adjustments[item.product.id] = (adjustments[item.product.id] || 0) + item.quantity
+      })
+      window.localStorage.setItem('pedregal_stock_adjustments', JSON.stringify(adjustments))
+
+      // Clear catalog cart
+      window.localStorage.removeItem('pedregal_cart')
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Pedido creado',
+        detail: `Pedido #${response.order?.number || ''} registrado correctamente.`,
+        life: 3000,
+      })
+
+      setTimeout(() => {
+        navigate('/orders')
+      }, 800)
+
+    } catch (err) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: (err as Error).message || 'Hubo un problema guardando el pedido.',
+        life: 3000,
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function handleCancelOrder() {

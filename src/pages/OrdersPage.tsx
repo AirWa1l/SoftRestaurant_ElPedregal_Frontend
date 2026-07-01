@@ -6,21 +6,10 @@ import { Skeleton } from 'primereact/skeleton'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
 import { userService } from '../services/userService'
+import { orderService } from '../services/orderService'
+import { CancelOrderDialog } from '../components/orders/CancelOrderDialog'
 import type { CurrentUser } from '../types/profile'
-import { siteContent } from '../data/siteContent'
-
-type OrderStatus = 'Pendiente' | 'Preparación' | 'Entregado' | 'Facturado'
-
-interface Order {
-  number: string
-  table: string
-  products: string
-  total: string
-  status: OrderStatus
-  time?: string
-  notes?: string
-  items?: Array<{ productId: string; quantity: number }>
-}
+import type { Order, OrderStatusFrontend } from '../types/order'
 
 export function OrdersPage() {
   const navigate = useNavigate()
@@ -28,6 +17,11 @@ export function OrdersPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  // Cancel dialog state
+  const [cancelDialogVisible, setCancelDialogVisible] = useState(false)
+  const [orderToCancel, setOrderToCancel] = useState<Order | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
 
   // Drag and Drop active column state for highlight
   const [draggedOverCol, setDraggedOverCol] = useState<string | null>(null)
@@ -45,44 +39,29 @@ export function OrdersPage() {
 
     void loadCurrentUser()
 
-    // Load orders
-    if (typeof window !== 'undefined') {
-      const cached = window.localStorage.getItem('pedregal_orders')
-      if (cached) {
-        try {
-          setOrders(JSON.parse(cached))
-        } catch {
-          setOrders([])
-        }
-      } else {
-        const initial: Order[] = []
-        setOrders(initial)
-        window.localStorage.setItem('pedregal_orders', JSON.stringify(initial))
+    // Load orders from service (simulated via localStorage)
+    async function loadOrders() {
+      const response = await orderService.getAll()
+      if (!isMounted) return
+      if (response.success) {
+        setOrders(response.orders)
       }
+      setIsLoading(false)
     }
-    
-    setIsLoading(false)
+    void loadOrders()
 
     return () => {
       isMounted = false
     }
   }, [])
 
-  // Sync state helper
-  function saveOrders(updatedList: Order[]) {
-    setOrders(updatedList)
-    window.localStorage.setItem('pedregal_orders', JSON.stringify(updatedList))
-  }
-
   // Explicit move status (both forward and backward)
-  function moveStatus(orderNumber: string, nextStatus: OrderStatus) {
-    const updated = orders.map((o) => {
-      if (o.number === orderNumber) {
-        return { ...o, status: nextStatus }
-      }
-      return o
-    })
-    saveOrders(updated)
+  async function moveStatus(orderNumber: string, nextStatus: OrderStatusFrontend) {
+    await orderService.updateStatus(orderNumber, nextStatus)
+    const response = await orderService.getAll()
+    if (response.success) {
+      setOrders(response.orders)
+    }
 
     toast.current?.show({
       severity: 'success',
@@ -92,9 +71,17 @@ export function OrdersPage() {
     })
   }
 
-  // Delete/Cancel order
-  function cancelOrder(orderNumber: string) {
-    const targetOrder = orders.find((o) => o.number === orderNumber)
+  // Cancel dialog handlers
+  function handleCancelClick(order: Order) {
+    setOrderToCancel(order)
+    setCancelDialogVisible(true)
+  }
+
+  async function handleConfirmCancel(reason: string) {
+    if (!orderToCancel) return
+    setIsCancelling(true)
+
+    const targetOrder = orders.find((o) => o.number === orderToCancel.number)
     if (targetOrder && targetOrder.items) {
       const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
       if (cachedAdjustments) {
@@ -110,13 +97,20 @@ export function OrdersPage() {
       }
     }
 
-    const updated = orders.filter((o) => o.number !== orderNumber)
-    saveOrders(updated)
+    await orderService.remove(orderToCancel.number)
+    const response = await orderService.getAll()
+    if (response.success) {
+      setOrders(response.orders)
+    }
+
+    setIsCancelling(false)
+    setCancelDialogVisible(false)
+    setOrderToCancel(null)
     toast.current?.show({
       severity: 'warn',
-      summary: 'Pedido Eliminado',
-      detail: `El pedido #${orderNumber} fue cancelado y se restituyó el stock.`,
-      life: 2500,
+      summary: 'Pedido Cancelado',
+      detail: `El pedido #${orderToCancel.number} fue cancelado. Motivo: ${reason}`,
+      life: 3000,
     })
   }
 
@@ -139,7 +133,7 @@ export function OrdersPage() {
     setDraggedOverCol(null)
   }
 
-  function handleDrop(e: React.DragEvent, targetStatus: OrderStatus) {
+  function handleDrop(e: React.DragEvent, targetStatus: OrderStatusFrontend) {
     e.preventDefault()
     setDraggedOverCol(null)
     const orderNumber = e.dataTransfer.getData('text/plain')
@@ -269,7 +263,7 @@ export function OrdersPage() {
                               text
                               size="small"
                               className="p-1"
-                              onClick={() => cancelOrder(o.number)}
+                              onClick={() => handleCancelClick(o)}
                             />
                           </div>
                         </div>
@@ -354,7 +348,7 @@ export function OrdersPage() {
                               text
                               size="small"
                               className="p-1"
-                              onClick={() => cancelOrder(o.number)}
+                              onClick={() => handleCancelClick(o)}
                             />
                           </div>
                         </div>
@@ -437,7 +431,7 @@ export function OrdersPage() {
                               text
                               size="small"
                               className="p-1"
-                              onClick={() => cancelOrder(o.number)}
+                              onClick={() => handleCancelClick(o)}
                             />
                           </div>
                         </div>
@@ -463,9 +457,12 @@ export function OrdersPage() {
                 text
                 severity="danger"
                 className="p-0 text-xs font-semibold"
-                onClick={() => {
+                onClick={async () => {
                   const activeOnly = orders.filter((o) => o.status !== 'Facturado')
-                  saveOrders(activeOnly)
+                  for (const billed of orders.filter((o) => o.status === 'Facturado')) {
+                    await orderService.remove(billed.number)
+                  }
+                  setOrders(activeOnly)
                 }}
               />
             </div>
@@ -478,6 +475,19 @@ export function OrdersPage() {
             </div>
           </div>
         )}
+
+        {/* Cancel Order Dialog */}
+        <CancelOrderDialog
+          visible={cancelDialogVisible}
+          onHide={() => {
+            setCancelDialogVisible(false)
+            setOrderToCancel(null)
+          }}
+          order={orderToCancel}
+          onConfirm={handleConfirmCancel}
+          isProcessing={isCancelling}
+          userRole={currentUser?.role ?? 'user'}
+        />
 
       </main>
     </div>

@@ -5,19 +5,9 @@ import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFoo
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { siteContent } from '../data/siteContent'
 import { userService } from '../services/userService'
+import { orderService } from '../services/orderService'
 import type { CurrentUser } from '../types/profile'
-
-type OrderStatus = 'Pendiente' | 'Preparación' | 'Entregado' | 'Facturado'
-
-interface Order {
-  number: string
-  table: string
-  products: string
-  total: string
-  status: OrderStatus
-  time?: string
-  items?: Array<{ productId: string; quantity: number }>
-}
+import type { Order, OrderStatusFrontend } from '../types/order'
 
 export function DashboardHomePage() {
   const navigate = useNavigate()
@@ -45,21 +35,15 @@ export function DashboardHomePage() {
       setCurrentUser(u)
     })
 
-    // Load orders from localStorage
-    if (typeof window !== 'undefined') {
-      const cachedOrders = window.localStorage.getItem('pedregal_orders')
-      if (cachedOrders) {
-        try {
-          setOrders(JSON.parse(cachedOrders))
-        } catch {
-          setOrders([])
-        }
-      } else {
-        const initialOrders: Order[] = []
-        setOrders(initialOrders)
-        window.localStorage.setItem('pedregal_orders', JSON.stringify(initialOrders))
+    // Load orders from service (simulated via localStorage)
+    async function loadOrders() {
+      const response = await orderService.getAll()
+      if (!isMounted) return
+      if (response.success) {
+        setOrders(response.orders)
       }
     }
+    void loadOrders()
 
     return () => {
       isMounted = false
@@ -78,22 +62,23 @@ export function DashboardHomePage() {
       .slice(0, 5)
   }, [orders])
 
-  function handleAdvanceStatus(orderNumber: string) {
-    const updated = orders.map((o) => {
-      if (o.number === orderNumber) {
-        let nextStatus: OrderStatus = o.status
-        if (o.status === 'Pendiente') nextStatus = 'Preparación'
-        else if (o.status === 'Preparación') nextStatus = 'Entregado'
-        else if (o.status === 'Entregado') nextStatus = 'Facturado'
-        return { ...o, status: nextStatus }
-      }
-      return o
-    })
-    setOrders(updated)
-    window.localStorage.setItem('pedregal_orders', JSON.stringify(updated))
+  async function handleAdvanceStatus(orderNumber: string) {
+    const order = orders.find((o) => o.number === orderNumber)
+    if (!order) return
+
+    const statusChain: OrderStatusFrontend[] = ['Pendiente', 'Preparación', 'Entregado', 'Facturado']
+    const currentIdx = statusChain.indexOf(order.status)
+    if (currentIdx === -1 || currentIdx >= statusChain.length - 1) return
+
+    const nextStatus = statusChain[currentIdx + 1]
+    await orderService.updateStatus(orderNumber, nextStatus)
+    const response = await orderService.getAll()
+    if (response.success) {
+      setOrders(response.orders)
+    }
   }
 
-  function handleRemoveOrder(orderNumber: string) {
+  async function handleRemoveOrder(orderNumber: string) {
     const targetOrder = orders.find((o) => o.number === orderNumber)
     if (targetOrder && targetOrder.items) {
       const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
@@ -110,18 +95,11 @@ export function DashboardHomePage() {
       }
     }
 
-    const updated = orders.filter((o) => o.number !== orderNumber)
-    setOrders(updated)
-    window.localStorage.setItem('pedregal_orders', JSON.stringify(updated))
-  }
-
-  function handleResetOrders() {
-    const initialOrders: Order[] = siteContent.orders.map((o, idx) => ({
-      ...o,
-      time: siteContent.recentOrders[idx]?.time || 'hace 1 hora',
-    }))
-    setOrders(initialOrders)
-    window.localStorage.setItem('pedregal_orders', JSON.stringify(initialOrders))
+    await orderService.remove(orderNumber)
+    const response = await orderService.getAll()
+    if (response.success) {
+      setOrders(response.orders)
+    }
   }
 
   return (

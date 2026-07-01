@@ -9,6 +9,7 @@ import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFoo
 import { userService } from '../services/userService'
 import { categoryService } from '../services/categoryService'
 import { productService } from '../services/productService'
+import { orderService } from '../services/orderService'
 import type { CurrentUser } from '../types/profile'
 import type { Category } from '../types/category'
 import type { Product } from '../types/product'
@@ -116,18 +117,12 @@ export function EditOrderPage() {
           throw new Error('No se pudieron cargar los productos de la base de datos.')
         }
 
-        // 3. Retrieve order from localStorage
-        const cachedOrders = window.localStorage.getItem('pedregal_orders')
-        if (!cachedOrders) {
-          throw new Error('No se encontró ningún pedido en la base de datos local.')
-        }
-
-        const orderList = JSON.parse(cachedOrders) as any[]
-        const orderToEdit = orderList.find((o) => o.number === number)
-
-        if (!orderToEdit) {
+        // 3. Retrieve order from service (simulated via localStorage)
+        const orderResponse = await orderService.getById(number!)
+        if (!orderResponse.success || !orderResponse.order) {
           throw new Error(`El pedido #${number} no existe en el sistema.`)
         }
+        const orderToEdit = orderResponse.order
 
         // Save metadata
         setCustomerName(orderToEdit.table)
@@ -305,82 +300,63 @@ export function EditOrderPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API update
-    setTimeout(() => {
-      try {
-        const cachedOrders = window.localStorage.getItem('pedregal_orders')
-        if (!cachedOrders) throw new Error('No hay pedidos registrados en el sistema.')
+    try {
+      const items = Object.values(cart).map((item) => ({
+        product: item.product.id,
+        quantity: item.quantity,
+        name: item.product.name,
+      }))
 
-        const orderList = JSON.parse(cachedOrders) as any[]
-        const index = orderList.findIndex((o) => o.number === number)
-
-        if (index === -1) throw new Error('El pedido no fue encontrado para actualizar.')
-
-        // Build product summary string
-        const productsSummary = Object.values(cart)
-          .map((item) => `${item.product.name} x${item.quantity}`)
-          .join(' · ')
-
-        // 1. Calculate stock difference and update local adjustments
-        const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
-        let adjustments: Record<string, number> = {}
-        if (cachedAdjustments) {
-          try {
-            adjustments = JSON.parse(cachedAdjustments)
-          } catch {}
-        }
-
-        // Refund all original items first
-        Object.entries(originalItemsMap).forEach(([prodId, origQty]) => {
-          if (adjustments[prodId] !== undefined) {
-            adjustments[prodId] = Math.max(0, adjustments[prodId] - origQty)
-          }
-        })
-
-        // Apply new cart items adjustments
-        Object.values(cart).forEach((item) => {
-          adjustments[item.product.id] = (adjustments[item.product.id] || 0) + item.quantity
-        })
-
-        window.localStorage.setItem('pedregal_stock_adjustments', JSON.stringify(adjustments))
-
-        // 2. Update order values
-        const updatedOrder = {
-          ...orderList[index],
-          table: customerName.trim(),
-          products: productsSummary,
-          total: subtotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }),
-          notes: notes.trim(),
-          items: Object.values(cart).map((item) => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-          })),
-        }
-
-        orderList[index] = updatedOrder
-        window.localStorage.setItem('pedregal_orders', JSON.stringify(orderList))
-
-        toast.current?.show({
-          severity: 'success',
-          summary: 'Pedido Actualizado',
-          detail: `Pedido #${number} modificado con éxito.`,
-          life: 3000,
-        })
-
-        setTimeout(() => {
-          navigate('/orders') // Redirect to OrdersPage
-        }, 800)
-
-      } catch (err) {
-        setIsSubmitting(false)
-        toast.current?.show({
-          severity: 'error',
-          summary: 'Error',
-          detail: (err as Error).message || 'Hubo un problema actualizando el pedido.',
-          life: 3000,
-        })
+      // 1. Calculate stock difference and update local adjustments
+      const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
+      let adjustments: Record<string, number> = {}
+      if (cachedAdjustments) {
+        try { adjustments = JSON.parse(cachedAdjustments) } catch {}
       }
-    }, 1200)
+      // Refund all original items first
+      Object.entries(originalItemsMap).forEach(([prodId, origQty]) => {
+        if (adjustments[prodId] !== undefined) {
+          adjustments[prodId] = Math.max(0, adjustments[prodId] - origQty)
+        }
+      })
+      // Apply new cart items adjustments
+      Object.values(cart).forEach((item) => {
+        adjustments[item.product.id] = (adjustments[item.product.id] || 0) + item.quantity
+      })
+      window.localStorage.setItem('pedregal_stock_adjustments', JSON.stringify(adjustments))
+
+      // 2. Update order via service
+      const response = await orderService.updateItems(number!, {
+        items,
+        table: customerName.trim(),
+        notes: notes.trim(),
+      })
+
+      if (!response.success) {
+        throw new Error(response.message || 'Error al actualizar el pedido')
+      }
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Pedido Actualizado',
+        detail: `Pedido #${number} modificado con éxito.`,
+        life: 3000,
+      })
+
+      setTimeout(() => {
+        navigate('/orders')
+      }, 800)
+
+    } catch (err) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: (err as Error).message || 'Hubo un problema actualizando el pedido.',
+        life: 3000,
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

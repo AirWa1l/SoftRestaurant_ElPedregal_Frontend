@@ -21,3 +21,11 @@ export function canEditProduct(role: UserRole) {
 export function canDeleteProduct(role: UserRole) {
   return role === 'admin'
 }
+
+export function canManageOrders(role: UserRole) {
+  return role === 'admin' || role === 'employee'
+}
+
+export function canAdvanceOrderStatus(role: UserRole) {
+  return role === 'admin' || role === 'employee'
+}

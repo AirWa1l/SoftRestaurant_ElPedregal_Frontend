@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Toast } from 'primereact/toast'
 import { Button } from 'primereact/button'
@@ -8,8 +8,11 @@ import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFoo
 import { userService } from '../services/userService'
 import { orderService } from '../services/orderService'
 import { CancelOrderDialog } from '../components/orders/CancelOrderDialog'
+import { ClientOrderTracking } from '../components/orders/ClientOrderTracking'
+import { AdminOrderBoard } from '../components/orders/AdminOrderBoard'
 import type { CurrentUser } from '../types/profile'
 import type { Order, OrderStatusFrontend } from '../types/order'
+import { canManageOrders } from '../utils/roles'
 
 export function OrdersPage() {
   const navigate = useNavigate()
@@ -18,13 +21,16 @@ export function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Cancel dialog state
   const [cancelDialogVisible, setCancelDialogVisible] = useState(false)
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
 
-  // Drag and Drop active column state for highlight
-  const [draggedOverCol, setDraggedOverCol] = useState<string | null>(null)
+  const loadOrders = useCallback(async () => {
+    const response = await orderService.getAll()
+    if (response.success) {
+      setOrders(response.orders)
+    }
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -37,32 +43,33 @@ export function OrdersPage() {
       }
     }
 
-    void loadCurrentUser()
-
-    // Load orders from service (simulated via localStorage)
-    async function loadOrders() {
-      const response = await orderService.getAll()
-      if (!isMounted) return
-      if (response.success) {
-        setOrders(response.orders)
-      }
-      setIsLoading(false)
+    async function init() {
+      setIsLoading(true)
+      await Promise.all([loadCurrentUser(), loadOrders()])
+      if (isMounted) setIsLoading(false)
     }
-    void loadOrders()
+
+    void init()
 
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [loadOrders])
 
-  // Explicit move status (both forward and backward)
+  // Polling every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadOrders()
+    }, 10000)
+
+    return () => clearInterval(interval)
+  }, [loadOrders])
+
+  const isStaff = currentUser ? canManageOrders(currentUser.role) : false
+
   async function moveStatus(orderNumber: string, nextStatus: OrderStatusFrontend) {
     await orderService.updateStatus(orderNumber, nextStatus)
-    const response = await orderService.getAll()
-    if (response.success) {
-      setOrders(response.orders)
-    }
-
+    await loadOrders()
     toast.current?.show({
       severity: 'success',
       summary: 'Estado Actualizado',
@@ -71,7 +78,6 @@ export function OrdersPage() {
     })
   }
 
-  // Cancel dialog handlers
   function handleCancelClick(order: Order) {
     setOrderToCancel(order)
     setCancelDialogVisible(true)
@@ -98,10 +104,7 @@ export function OrdersPage() {
     }
 
     await orderService.remove(orderToCancel.number)
-    const response = await orderService.getAll()
-    if (response.success) {
-      setOrders(response.orders)
-    }
+    await loadOrders()
 
     setIsCancelling(false)
     setCancelDialogVisible(false)
@@ -114,39 +117,12 @@ export function OrdersPage() {
     })
   }
 
-  // HTML5 Drag handlers
-  function handleDragStart(e: React.DragEvent, orderNumber: string) {
-    e.dataTransfer.setData('text/plain', orderNumber)
-  }
-
-  function handleDragOver(e: React.DragEvent, colName: string) {
-    e.preventDefault()
-  }
-
-  function handleDragEnter(e: React.DragEvent, colName: string) {
-    e.preventDefault()
-    setDraggedOverCol(colName)
-  }
-
-  function handleDragLeave(e: React.DragEvent) {
-    e.preventDefault()
-    setDraggedOverCol(null)
-  }
-
-  function handleDrop(e: React.DragEvent, targetStatus: OrderStatusFrontend) {
-    e.preventDefault()
-    setDraggedOverCol(null)
-    const orderNumber = e.dataTransfer.getData('text/plain')
-    if (orderNumber) {
-      moveStatus(orderNumber, targetStatus)
+  async function handleClearBilled() {
+    for (const billed of orders.filter((o) => o.status === 'Facturado')) {
+      await orderService.remove(billed.number)
     }
+    setOrders((prev) => prev.filter((o) => o.status !== 'Facturado'))
   }
-
-  // Column divisions
-  const pendingOrders = useMemo(() => orders.filter((o) => o.status === 'Pendiente'), [orders])
-  const prepOrders = useMemo(() => orders.filter((o) => o.status === 'Preparación'), [orders])
-  const deliveredOrders = useMemo(() => orders.filter((o) => o.status === 'Entregado'), [orders])
-  const billedOrders = useMemo(() => orders.filter((o) => o.status === 'Facturado'), [orders])
 
   return (
     <div className="dashboard-shell">
@@ -164,7 +140,9 @@ export function OrdersPage() {
         <header className="flex justify-content-between align-items-center mb-2">
           <div>
             <span className="dashboard-eyebrow">Operaciones</span>
-            <h1 className="dashboard-title text-2xl font-bold text-900 m-0">Gestión de Pedidos Activos</h1>
+            <h1 className="dashboard-title text-2xl font-bold text-900 m-0">
+              {isStaff ? 'Gestión de Pedidos Activos' : 'Mis Pedidos'}
+            </h1>
           </div>
           <Button
             label="Nuevo Pedido"
@@ -186,7 +164,7 @@ export function OrdersPage() {
             <span className="text-6xl mb-3">📋</span>
             <h3 className="text-xl font-bold text-900 m-0">No hay pedidos registrados</h3>
             <p className="text-sm text-500 max-w-20rem mt-2 mb-4">
-              En este momento no hay pedidos activos en cocina, entrega o facturación.
+              En este momento no hay pedidos en el sistema.
             </p>
             <Button
               label="Registrar primer pedido"
@@ -196,287 +174,23 @@ export function OrdersPage() {
               onClick={() => navigate('/orders/new')}
             />
           </div>
+        ) : isStaff ? (
+          <AdminOrderBoard
+            orders={orders}
+            onStatusChange={moveStatus}
+            onEdit={(number) => navigate(`/orders/${number}/edit`)}
+            onCancel={handleCancelClick}
+            onClearBilled={handleClearBilled}
+          />
         ) : (
-          <div className="grid mt-2">
-            
-            {/* COLUMN 1: PENDIENTES */}
-            <div className="col-12 md:col-4 p-2">
-              <div
-                className="border-round-xl p-3 flex flex-column gap-3 transition-all"
-                style={{
-                  background: '#fef3c7',
-                  minHeight: '500px',
-                  border: draggedOverCol === 'Pendiente' ? '2px dashed #d97706' : '1px solid #fde68a',
-                  transform: draggedOverCol === 'Pendiente' ? 'scale(1.01)' : 'none',
-                }}
-                onDragOver={(e) => handleDragOver(e, 'Pendiente')}
-                onDragEnter={(e) => handleDragEnter(e, 'Pendiente')}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, 'Pendiente')}
-              >
-                <div className="flex justify-content-between align-items-center pb-2 border-bottom-1 border-amber-300">
-                  <span className="font-extrabold text-amber-900 text-sm uppercase tracking-wider">Pendientes ({pendingOrders.length})</span>
-                  <span className="text-xs bg-amber-200 text-amber-900 font-bold px-2 py-0.5 border-round-md">Entrantes</span>
-                </div>
-                
-                <div className="flex flex-column gap-3 overflow-y-auto" style={{ maxHeight: '600px' }}>
-                  {pendingOrders.length === 0 ? (
-                    <div className="text-center py-5 text-xs text-amber-700 font-medium">Sin pedidos pendientes. ¡Arrastra uno aquí!</div>
-                  ) : (
-                    pendingOrders.map((o) => (
-                      <div
-                        key={o.number}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, o.number)}
-                        className="bg-white border-round-xl p-3 shadow-1 flex flex-column gap-2 border-left-3 border-amber-500 cursor-grab active:cursor-grabbing transition-all hover:shadow-3"
-                      >
-                        <div className="flex justify-content-between align-items-center">
-                          <strong className="text-sm text-900">#{o.number} — {o.table}</strong>
-                          <span className="text-xs text-500">{o.time || 'hace poco'}</span>
-                        </div>
-                        <p className="text-xs text-700 font-medium m-0">{o.products}</p>
-                        {o.notes && <p className="text-xs text-500 italic m-0">Nota: {o.notes}</p>}
-                        <div className="flex justify-content-between align-items-center mt-2 pt-2 border-top-1 surface-border">
-                          <span className="font-bold text-sm text-900">{o.total}</span>
-                          <div className="flex gap-2 align-items-center">
-                            <Button
-                              icon="pi pi-pencil"
-                              severity="secondary"
-                              text
-                              size="small"
-                              className="p-1"
-                              onClick={() => navigate(`/orders/${o.number}/edit`)}
-                              tooltip="Editar"
-                            />
-                            <Button
-                              label="Preparar"
-                              icon="pi pi-arrow-right"
-                              iconPos="right"
-                              severity="warning"
-                              size="small"
-                              className="font-bold text-xs py-1 px-2 border-round-lg"
-                              onClick={() => moveStatus(o.number, 'Preparación')}
-                            />
-                            <Button
-                              icon="pi pi-trash"
-                              severity="danger"
-                              text
-                              size="small"
-                              className="p-1"
-                              onClick={() => handleCancelClick(o)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* COLUMN 2: EN PREPARACIÓN */}
-            <div className="col-12 md:col-4 p-2">
-              <div
-                className="border-round-xl p-3 flex flex-column gap-3 transition-all"
-                style={{
-                  background: '#dbeafe',
-                  minHeight: '500px',
-                  border: draggedOverCol === 'Preparación' ? '2px dashed #2563eb' : '1px solid #bfdbfe',
-                  transform: draggedOverCol === 'Preparación' ? 'scale(1.01)' : 'none',
-                }}
-                onDragOver={(e) => handleDragOver(e, 'Preparación')}
-                onDragEnter={(e) => handleDragEnter(e, 'Preparación')}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, 'Preparación')}
-              >
-                <div className="flex justify-content-between align-items-center pb-2 border-bottom-1 border-blue-300">
-                  <span className="font-extrabold text-blue-900 text-sm uppercase tracking-wider">En Cocina ({prepOrders.length})</span>
-                  <span className="text-xs bg-blue-200 text-blue-900 font-bold px-2 py-0.5 border-round-md">Preparando</span>
-                </div>
-
-                <div className="flex flex-column gap-3 overflow-y-auto" style={{ maxHeight: '600px' }}>
-                  {prepOrders.length === 0 ? (
-                    <div className="text-center py-5 text-xs text-blue-700 font-medium">Sin pedidos en preparación. ¡Arrastra uno aquí!</div>
-                  ) : (
-                    prepOrders.map((o) => (
-                      <div
-                        key={o.number}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, o.number)}
-                        className="bg-white border-round-xl p-3 shadow-1 flex flex-column gap-2 border-left-3 border-blue-500 cursor-grab active:cursor-grabbing transition-all hover:shadow-3"
-                      >
-                        <div className="flex justify-content-between align-items-center">
-                          <strong className="text-sm text-900">#{o.number} — {o.table}</strong>
-                          <span className="text-xs text-500">{o.time || 'hace poco'}</span>
-                        </div>
-                        <p className="text-xs text-700 font-medium m-0">{o.products}</p>
-                        {o.notes && <p className="text-xs text-500 italic m-0">Nota: {o.notes}</p>}
-                        <div className="flex justify-content-between align-items-center mt-2 pt-2 border-top-1 surface-border">
-                          <span className="font-bold text-sm text-900">{o.total}</span>
-                          <div className="flex gap-1 align-items-center">
-                            <Button
-                              icon="pi pi-pencil"
-                              severity="secondary"
-                              text
-                              size="small"
-                              className="p-1"
-                              onClick={() => navigate(`/orders/${o.number}/edit`)}
-                              tooltip="Editar"
-                            />
-                            <Button
-                              icon="pi pi-arrow-left"
-                              severity="secondary"
-                              size="small"
-                              outlined
-                              className="font-bold text-xs py-1 px-2 border-round-lg"
-                              onClick={() => moveStatus(o.number, 'Pendiente')}
-                              tooltip="Mover a Pendiente"
-                            />
-                            <Button
-                              label="Entregar"
-                              icon="pi pi-arrow-right"
-                              iconPos="right"
-                              severity="info"
-                              size="small"
-                              className="font-bold text-xs py-1 px-2 border-round-lg text-white"
-                              style={{ background: '#2563eb', borderColor: '#2563eb' }}
-                              onClick={() => moveStatus(o.number, 'Entregado')}
-                            />
-                            <Button
-                              icon="pi pi-trash"
-                              severity="danger"
-                              text
-                              size="small"
-                              className="p-1"
-                              onClick={() => handleCancelClick(o)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* COLUMN 3: ENTREGADOS / PARA FACTURAR */}
-            <div className="col-12 md:col-4 p-2">
-              <div
-                className="border-round-xl p-3 flex flex-column gap-3 transition-all"
-                style={{
-                  background: '#dcfce7',
-                  minHeight: '500px',
-                  border: draggedOverCol === 'Entregado' ? '2px dashed #16a34a' : '1px solid #bbf7d0',
-                  transform: draggedOverCol === 'Entregado' ? 'scale(1.01)' : 'none',
-                }}
-                onDragOver={(e) => handleDragOver(e, 'Entregado')}
-                onDragEnter={(e) => handleDragEnter(e, 'Entregado')}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, 'Entregado')}
-              >
-                <div className="flex justify-content-between align-items-center pb-2 border-bottom-1 border-green-300">
-                  <span className="font-extrabold text-green-900 text-sm uppercase tracking-wider">Entregados ({deliveredOrders.length})</span>
-                  <span className="text-xs bg-green-200 text-green-900 font-bold px-2 py-0.5 border-round-md">Para Cobrar</span>
-                </div>
-
-                <div className="flex flex-column gap-3 overflow-y-auto" style={{ maxHeight: '600px' }}>
-                  {deliveredOrders.length === 0 ? (
-                    <div className="text-center py-5 text-xs text-green-700 font-medium">Sin pedidos entregados. ¡Arrastra uno aquí!</div>
-                  ) : (
-                    deliveredOrders.map((o) => (
-                      <div
-                        key={o.number}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, o.number)}
-                        className="bg-white border-round-xl p-3 shadow-1 flex flex-column gap-2 border-left-3 border-green-500 cursor-grab active:cursor-grabbing transition-all hover:shadow-3"
-                      >
-                        <div className="flex justify-content-between align-items-center">
-                          <strong className="text-sm text-900">#{o.number} — {o.table}</strong>
-                          <span className="text-xs text-500">{o.time || 'hace poco'}</span>
-                        </div>
-                        <p className="text-xs text-700 font-medium m-0">{o.products}</p>
-                        {o.notes && <p className="text-xs text-500 italic m-0">Nota: {o.notes}</p>}
-                        <div className="flex justify-content-between align-items-center mt-2 pt-2 border-top-1 surface-border">
-                          <span className="font-bold text-sm text-900">{o.total}</span>
-                          <div className="flex gap-1 align-items-center">
-                            <Button
-                              icon="pi pi-pencil"
-                              severity="secondary"
-                              text
-                              size="small"
-                              className="p-1"
-                              onClick={() => navigate(`/orders/${o.number}/edit`)}
-                              tooltip="Editar"
-                            />
-                            <Button
-                              icon="pi pi-arrow-left"
-                              severity="secondary"
-                              size="small"
-                              outlined
-                              className="font-bold text-xs py-1 px-2 border-round-lg"
-                              onClick={() => moveStatus(o.number, 'Preparación')}
-                              tooltip="Mover a Cocina"
-                            />
-                            <Button
-                              label="Facturar"
-                              icon="pi pi-dollar"
-                              severity="success"
-                              size="small"
-                              className="font-bold text-xs py-1 px-2 border-round-lg"
-                              onClick={() => moveStatus(o.number, 'Facturado')}
-                            />
-                            <Button
-                              icon="pi pi-trash"
-                              severity="danger"
-                              text
-                              size="small"
-                              className="p-1"
-                              onClick={() => handleCancelClick(o)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <ClientOrderTracking
+            orders={orders}
+            onEdit={(number) => navigate(`/orders/${number}/edit`)}
+            onCancel={handleCancelClick}
+            onNewOrder={() => navigate('/orders/new')}
+          />
         )}
 
-        {/* History / Billed Orders Section */}
-        {!isLoading && billedOrders.length > 0 && (
-          <div className="surface-card border-round-xl border-1 surface-border p-3 mt-3">
-            <div className="flex justify-content-between align-items-center mb-2">
-              <h3 className="text-sm font-bold text-800 m-0">Historial de Pedidos Facturados ({billedOrders.length})</h3>
-              <Button
-                label="Limpiar Historial"
-                icon="pi pi-trash"
-                size="small"
-                text
-                severity="danger"
-                className="p-0 text-xs font-semibold"
-                onClick={async () => {
-                  const activeOnly = orders.filter((o) => o.status !== 'Facturado')
-                  for (const billed of orders.filter((o) => o.status === 'Facturado')) {
-                    await orderService.remove(billed.number)
-                  }
-                  setOrders(activeOnly)
-                }}
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {billedOrders.map((o) => (
-                <span key={o.number} className="bg-100 text-600 text-xs px-2.5 py-1.5 border-round-lg border-1 surface-border">
-                  #{o.number} ({o.table}) - <strong>{o.total}</strong> (Facturado)
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Cancel Order Dialog */}
         <CancelOrderDialog
           visible={cancelDialogVisible}
           onHide={() => {
@@ -488,7 +202,6 @@ export function OrdersPage() {
           isProcessing={isCancelling}
           userRole={currentUser?.role ?? 'user'}
         />
-
       </main>
     </div>
   )

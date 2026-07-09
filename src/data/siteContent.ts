@@ -38,6 +38,7 @@ export const siteContent = {
     { label: 'Productos', href: '/products' },
     { label: 'Usuarios', href: '/home' },
     { label: 'Configuración', href: '/home' },
+    { label: 'Ventas', href: '/sales' }
   ] satisfies NavigationLink[],
   hero: {
     eyebrow: 'Dashboard',

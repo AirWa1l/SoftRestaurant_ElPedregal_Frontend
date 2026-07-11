@@ -2,13 +2,21 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from 'primereact/button'
 import { Calendar } from 'primereact/calendar'
+import { Dialog } from 'primereact/dialog'
 import { ProgressSpinner } from 'primereact/progressspinner'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { categoryService } from '../services/categoryService'
 import { userService } from '../services/userService'
+import { exportToExcel, exportToPDF } from '../utils/exportReport'
+import { canViewSalesReports } from '../utils/roles'
 import type { Category } from '../types/category'
 import type { CurrentUser } from '../types/profile'
+import type {
+  SalesSummaryPoint,
+  PaymentMethodPoint,
+  ProductSalesPoint,
+} from '../utils/exportReport'
 
 type SalesDayPoint = {
   day: string
@@ -16,31 +24,11 @@ type SalesDayPoint = {
   highlight?: boolean
 }
 
-type PaymentMethodPoint = {
-  label: string
-  percent: number
-  color: string
-}
-
-type SalesSummaryPoint = {
-  label: string
-  value: string
-  note: string
-}
-
 type SalesReportMock = {
   summary: SalesSummaryPoint[]
   salesByDay: SalesDayPoint[]
   salesByProduct: ProductSalesPoint[]
   paymentMethods: PaymentMethodPoint[]
-}
-
-type ProductSalesPoint = {
-  label: string
-  units: number
-  amount: string
-  percent: number
-  color: string
 }
 
 const ALL_CATEGORIES_OPTION = { id: 'all', name: 'Todas las categorías de productos' }
@@ -188,6 +176,7 @@ export function SalesPage() {
   const [salesReport, setSalesReport] = useState<SalesReportMock | null>(null)
   const [isLoadingReport, setIsLoadingReport] = useState(true)
   const [isLoadingUser, setIsLoadingUser] = useState(true)
+  const [exportDialogVisible, setExportDialogVisible] = useState(false)
 
   function formatMonthLabel(date: Date) {
     const rawLabel = new Intl.DateTimeFormat('es-CO', {
@@ -203,6 +192,24 @@ export function SalesPage() {
     selectedCategoryId === ALL_CATEGORIES_OPTION.id
       ? ALL_CATEGORIES_OPTION.name
       : categories.find((category) => category.id === selectedCategoryId)?.name ?? ALL_CATEGORIES_OPTION.name
+
+  function handleExportToExcel() {
+    exportToExcel(
+      { salesSummary, salesByDay, paymentMethods, salesByProduct },
+      fromDate,
+      () => setExportDialogVisible(false)
+    )
+  }
+
+  function handleExportToPDF() {
+    exportToPDF(
+      { salesSummary, salesByDay, paymentMethods, salesByProduct },
+      fromDate,
+      toDate,
+      selectedCategoryName,
+      () => setExportDialogVisible(false)
+    )
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -226,6 +233,11 @@ export function SalesPage() {
 
       if (response.success && response.user) {
         setCurrentUser(response.user)
+
+        if (!canViewSalesReports(response.user.role)) {
+          navigate('/home')
+          return
+        }
       }
 
       setIsLoadingUser(false)
@@ -332,6 +344,7 @@ export function SalesPage() {
               icon="pi pi-download"
               severity="warning"
               className="sales-export-button"
+              onClick={() => setExportDialogVisible(true)}
             />
           </div>
         </header>
@@ -435,6 +448,34 @@ export function SalesPage() {
             </section>
           </>
         )}
+        <Dialog
+          header="Seleccionar formato de exportación"
+          visible={exportDialogVisible}
+          onHide={() => setExportDialogVisible(false)}
+          style={{ width: '350px' }}
+          draggable={false}
+          resizable={false}
+        >
+          <div className="sales-export-dialog-content">
+            <p className="sales-export-dialog-text">¿En qué formato deseas exportar el reporte?</p>
+            <div className="sales-export-dialog-actions">
+              <Button
+                label="Excel"
+                icon="pi pi-file-excel"
+                severity="success"
+                className="sales-export-option-btn"
+                onClick={handleExportToExcel}
+              />
+              <Button
+                label="PDF"
+                icon="pi pi-file-pdf"
+                severity="danger"
+                className="sales-export-option-btn"
+                onClick={handleExportToPDF}
+              />
+            </div>
+          </div>
+        </Dialog>
       </main>
     </div>
   )

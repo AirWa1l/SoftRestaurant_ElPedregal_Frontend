@@ -13,6 +13,7 @@ import { orderService } from '../services/orderService'
 import type { CurrentUser } from '../types/profile'
 import type { Category } from '../types/category'
 import type { Product } from '../types/product'
+import type { OrderStatusFrontend } from '../types/order'
 
 interface CartItem {
   product: Product
@@ -78,7 +79,7 @@ export function EditOrderPage() {
   const [cart, setCart] = useState<Record<string, CartItem>>({})
   const [activeCategory, setActiveCategory] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [orderStatus, setOrderStatus] = useState<'Pendiente' | 'Preparación' | 'Entregado' | 'Facturado'>('Pendiente')
+  const [orderStatus, setOrderStatus] = useState<OrderStatusFrontend>('Pendiente')
   const [orderTime, setOrderTime] = useState('hace 1 min')
 
   // Submit state
@@ -127,7 +128,7 @@ export function EditOrderPage() {
         // Save metadata
         setCustomerName(orderToEdit.table)
         setNotes(orderToEdit.notes || '')
-        setOrderStatus(orderToEdit.status)
+        setOrderStatus(orderToEdit.status || 'Pendiente')
         setOrderTime(orderToEdit.time || 'hace 1 min')
 
         // 4. Map original items
@@ -362,7 +363,7 @@ export function EditOrderPage() {
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
-        <DashboardSidebarHeader />
+        <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
         <DashboardSidebarFooter
           currentUser={currentUser}
           onGoToEditProfile={() => navigate('/edit-profile')}

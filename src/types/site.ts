@@ -1,6 +1,9 @@
+import type { UserRole } from '../utils/roles'
+
 export type NavigationLink = {
   label: string
   href: string
+  roles?: UserRole[]
 }
 
 export type HighlightCard = {

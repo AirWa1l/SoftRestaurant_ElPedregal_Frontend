@@ -1,6 +1,4 @@
-import * as XLSX from 'xlsx'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { format } from 'date-fns'
 
 export type SalesSummaryPoint = {
   label: string
@@ -34,107 +32,121 @@ export type ExportReportData = {
   salesByProduct: ProductSalesPoint[]
 }
 
-export function exportToExcel(
-  data: ExportReportData,
-  fromDate: Date | null,
-  onComplete?: () => void
-) {
-  const wb = XLSX.utils.book_new()
+function getApiBaseUrl() {
+  return (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/auth$/, '').replace(/\/$/, '')
+}
 
-  const summaryData = data.salesSummary.map((item) => ({
-    Indicador: item.label,
-    Valor: item.value,
-    Nota: item.note,
-  }))
-  const summarySheet = XLSX.utils.json_to_sheet(summaryData)
-  XLSX.utils.book_append_sheet(wb, summarySheet, 'Resumen')
+function getDownloadBaseUrl() {
+  return getApiBaseUrl().replace(/\/api$/, '')
+}
 
-  const daysData = data.salesByDay.map((item) => ({
-    Día: item.day,
-    Ventas: item.value,
-  }))
-  const daysSheet = XLSX.utils.json_to_sheet(daysData)
-  XLSX.utils.book_append_sheet(wb, daysSheet, 'Ventas por día')
+function getAccessToken() {
+  return typeof window !== 'undefined' ? window.localStorage.getItem('pedregal_access_token') : null
+}
 
-  const paymentData = data.paymentMethods.map((item) => ({
-    'Medio de pago': item.label,
-    Porcentaje: `${item.percent}%`,
-  }))
-  const paymentSheet = XLSX.utils.json_to_sheet(paymentData)
-  XLSX.utils.book_append_sheet(wb, paymentSheet, 'Medios de pago')
+function formatDateForApi(date: Date | null) {
+  return date ? format(date, 'yyyy-MM-dd') : ''
+}
 
-  const productData = data.salesByProduct.map((item) => ({
-    Producto: item.label,
-    Unidades: item.units,
-    Monto: item.amount,
-    Porcentaje: `${item.percent}%`,
-  }))
-  const productSheet = XLSX.utils.json_to_sheet(productData)
-  XLSX.utils.book_append_sheet(wb, productSheet, 'Productos')
+async function pollReportExportStatus(statusUrl: string, onComplete?: () => void) {
+  const token = getAccessToken()
+  const baseUrl = getApiBaseUrl().replace(/\/$/, '')
+  const normalizedStatusPath = statusUrl.startsWith('http')
+    ? statusUrl
+    : `${baseUrl}${statusUrl.replace(/^\/api/, '')}`
+  const start = Date.now()
+  const timeoutMs = 30_000
+  const intervalMs = 1000
 
-  XLSX.writeFile(wb, `reporte_ventas_${fromDate?.toISOString().slice(0, 7)}.xlsx`)
+  while (Date.now() - start < timeoutMs) {
+    const response = await fetch(normalizedStatusPath, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      credentials: 'include',
+    })
+
+    const payload = await response.json().catch(() => null)
+    if (!response.ok) {
+      throw new Error(payload?.message || 'No fue posible consultar el estado del reporte')
+    }
+
+    if (payload?.status === 'completed' && payload?.result?.downloadUrl) {
+      const absoluteUrl = new URL(payload.result.downloadUrl, `${getDownloadBaseUrl()}/`).toString()
+      window.open(absoluteUrl, '_blank', 'noopener,noreferrer')
+      onComplete?.()
+      return
+    }
+
+    if (payload?.status === 'failed') {
+      throw new Error(payload?.error || 'La generación del reporte falló')
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, intervalMs))
+  }
+
+  throw new Error('El reporte aún se está procesando. Por favor inténtalo de nuevo en unos segundos.')
+}
+
+async function requestReportExport(format: 'pdf' | 'xlsx', fromDate: Date | null, toDate: Date | null, onComplete?: () => void) {
+  const token = getAccessToken()
+  const response = await fetch(`${getApiBaseUrl()}/reports/export`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      format,
+      fromDate: formatDateForApi(fromDate),
+      toDate: formatDateForApi(toDate),
+      restaurantName: 'El Pedregal',
+    }),
+  })
+
+  const payload = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new Error(payload?.message || 'No fue posible generar el reporte')
+  }
+
+  if (payload?.downloadUrl) {
+    const absoluteUrl = new URL(payload.downloadUrl, `${getDownloadBaseUrl()}/`).toString()
+    window.open(absoluteUrl, '_blank', 'noopener,noreferrer')
+    onComplete?.()
+    return
+  }
+
+  if (payload?.statusUrl) {
+    await pollReportExportStatus(payload.statusUrl, onComplete)
+    return
+  }
+
+  if (payload?.status === 'queued' || payload?.status === 'processing') {
+    await pollReportExportStatus(`/api/reports/export/${payload.jobId}`, onComplete)
+    return
+  }
+
   onComplete?.()
 }
 
-export function exportToPDF(
-  data: ExportReportData,
+export function exportToExcel(
+  _data: ExportReportData,
   fromDate: Date | null,
-  toDate: Date | null,
-  selectedCategoryName: string,
   onComplete?: () => void
 ) {
-  const doc = new jsPDF()
-  const pageWidth = doc.internal.pageSize.getWidth()
+  void requestReportExport('xlsx', fromDate, fromDate, onComplete)
+}
 
-  doc.setFontSize(16)
-  doc.text('Reporte de Ventas', pageWidth / 2, 20, { align: 'center' })
-  doc.setFontSize(10)
-  doc.text(`Período: ${fromDate?.toLocaleDateString('es-CO')} - ${toDate?.toLocaleDateString('es-CO')}`, pageWidth / 2, 28, { align: 'center' })
-  doc.text(`Categoría: ${selectedCategoryName}`, pageWidth / 2, 34, { align: 'center' })
-
-  doc.setFontSize(12)
-  doc.text('Resumen', 14, 46)
-  const summaryRows = data.salesSummary.map((item) => [item.label, item.value, item.note])
-  autoTable(doc, {
-    startY: 50,
-    head: [['Indicador', 'Valor', 'Nota']],
-    body: summaryRows,
-    theme: 'grid',
-  })
-
-  doc.addPage()
-  doc.setFontSize(12)
-  doc.text('Ventas por día', 14, 20)
-  const daysRows = data.salesByDay.map((item) => [item.day, String(item.value)])
-  autoTable(doc, {
-    startY: 26,
-    head: [['Día', 'Ventas']],
-    body: daysRows,
-    theme: 'grid',
-  })
-
-  const daysTableFinalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY
-  doc.setFontSize(12)
-  doc.text('Ventas por medio de pago', 14, daysTableFinalY + 16)
-  const paymentRows = data.paymentMethods.map((item) => [item.label, `${item.percent}%`])
-  autoTable(doc, {
-    startY: daysTableFinalY + 20,
-    head: [['Medio de pago', 'Porcentaje']],
-    body: paymentRows,
-    theme: 'grid',
-  })
-
-  doc.addPage()
-  doc.setFontSize(12)
-  doc.text('Ventas por producto', 14, 20)
-  const productRows = data.salesByProduct.map((item) => [item.label, String(item.units), item.amount, `${item.percent}%`])
-  autoTable(doc, {
-    startY: 26,
-    head: [['Producto', 'Unidades', 'Monto', 'Porcentaje']],
-    body: productRows,
-    theme: 'grid',
-  })
-
-  doc.save(`reporte_ventas_${fromDate?.toISOString().slice(0, 7)}.pdf`)
-  onComplete?.()
+export function exportToPDF(
+  _data: ExportReportData,
+  fromDate: Date | null,
+  toDate: Date | null,
+  _selectedCategoryName: string,
+  onComplete?: () => void
+) {
+  void requestReportExport('pdf', fromDate, toDate, onComplete)
 }

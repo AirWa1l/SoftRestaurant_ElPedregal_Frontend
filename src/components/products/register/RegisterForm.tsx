@@ -11,10 +11,19 @@ import type { Category } from '../../../types/category'
 import { productService } from '../../../services/productService'
 import { categoryService } from '../../../services/categoryService'
 
+type ProductFormValues = {
+  name: string
+  category: string
+  price: number | null
+  description: string
+  imageUrl: string
+  isAvailable: boolean
+  stock: number
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const INITIAL_FORM: Product = {
-  id: '0',
+const INITIAL_FORM: ProductFormValues = {
   name: '',
   category: '',
   price: null,
@@ -27,7 +36,7 @@ const INITIAL_FORM: Product = {
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 function validate(
-  form: Product,
+  form: ProductFormValues,
   imageFile: File | null
 ): ProductFormErrors {
   const errors: ProductFormErrors = {}
@@ -97,9 +106,9 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  function handleChange<K extends keyof Product>(
+  function handleChange<K extends keyof ProductFormValues>(
     field: K,
-    value: Product[K]
+    value: ProductFormValues[K]
   ) {
     setForm((prev) => ({
       ...prev,

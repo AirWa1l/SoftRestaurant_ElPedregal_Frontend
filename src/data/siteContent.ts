@@ -35,7 +35,7 @@ export const siteContent = {
   navigation: [
     { label: 'Dashboard', href: '/home' },
     { label: 'Pedidos', href: '/orders' },
-    { label: 'Productos', href: '/products', roles: ['admin', 'employee'] },
+    { label: 'Productos', href: '/products', roles: ['admin', 'employee', 'user'] },
     { label: 'Usuarios', href: '/home', roles: ['admin'] },
     { label: 'Configuración', href: '/home', roles: ['admin'] },
     { label: 'Ventas', href: '/sales', roles: ['admin', 'employee'] }

@@ -5,7 +5,7 @@ import type {
   ProductDeleteResponse,
 } from '../types/product'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')
 const API_HOST = API_BASE_URL.replace(/\/api$/, '')
 const ACCESS_TOKEN_STORAGE_KEY = 'pedregal_access_token'
 

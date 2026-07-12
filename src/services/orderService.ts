@@ -1,11 +1,9 @@
 import type { Order, OrderListResponse, OrderResponse, CreateOrderPayload, UpdateOrderPayload, OrderStatusFrontend } from '../types/order'
 
-const API_BASE_URL_RAW = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+const API_BASE_URL_RAW = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')
 const API_BASE_URL = API_BASE_URL_RAW.replace(/\/auth$/, '')
 const ACCESS_TOKEN_STORAGE_KEY = 'pedregal_access_token'
 const ORDERS_STORAGE_KEY = 'pedregal_orders'
-const CART_STORAGE_KEY = 'pedregal_cart'
-const ADJUSTMENTS_STORAGE_KEY = 'pedregal_stock_adjustments'
 
 let cachedAccessToken: string | null = null
 
@@ -61,18 +59,6 @@ function mapFrontendToBackend(frontendStatus: string): string {
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
-}
-
-function parseTotal(value: unknown): number {
-  if (typeof value === 'number') return value
-  if (typeof value === 'string') {
-    const cleaned = value.replace(/[^0-9,]/g, '').replace(',', '.')
-    return Number(cleaned) || 0
-  }
-  if (value && typeof value === 'object' && '$numberDecimal' in value) {
-    return Number((value as any).$numberDecimal)
-  }
-  return 0
 }
 
 function getLocalOrders(): Order[] {

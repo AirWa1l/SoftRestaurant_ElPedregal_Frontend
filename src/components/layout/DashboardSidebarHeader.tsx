@@ -8,7 +8,7 @@ type Props = {
 
 export function DashboardSidebarHeader({ userRole }: Props) {
   const visibleLinks = siteContent.navigation.filter(
-    (link) => !link.roles || link.roles.includes(userRole)
+    (link) => !link.roles || link.roles.includes(userRole as UserRole)
   )
 
   return (

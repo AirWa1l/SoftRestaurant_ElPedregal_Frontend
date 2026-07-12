@@ -35,10 +35,10 @@ export const siteContent = {
   navigation: [
     { label: 'Dashboard', href: '/home' },
     { label: 'Pedidos', href: '/orders' },
-    { label: 'Productos', href: '/products' },
-    { label: 'Usuarios', href: '/home' },
-    { label: 'Configuración', href: '/home' },
-    { label: 'Ventas', href: '/sales' }
+    { label: 'Productos', href: '/products', roles: ['admin', 'employee'] },
+    { label: 'Usuarios', href: '/home', roles: ['admin'] },
+    { label: 'Configuración', href: '/home', roles: ['admin'] },
+    { label: 'Ventas', href: '/sales', roles: ['admin', 'employee'] }
   ] satisfies NavigationLink[],
   hero: {
     eyebrow: 'Dashboard',

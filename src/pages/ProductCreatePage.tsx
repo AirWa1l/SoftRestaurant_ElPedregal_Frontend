@@ -41,7 +41,7 @@ export function ProductCreatePage() {
   return (
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
-        <DashboardSidebarHeader />
+        <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
         <DashboardSidebarFooter
           currentUser={currentUser}
           onGoToEditProfile={() => navigate('/edit-profile')}

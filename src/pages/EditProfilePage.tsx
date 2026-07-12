@@ -201,7 +201,7 @@ export function EditProfilePage() {
   return (
     <div className="dashboard-shell edit-profile-shell">
       <aside className="dashboard-sidebar">
-        <DashboardSidebarHeader />
+        <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
         <DashboardSidebarFooter
           currentUser={currentUser}
           onGoToEditProfile={() => navigate('/edit-profile')}

@@ -29,3 +29,7 @@ export function canManageOrders(role: UserRole) {
 export function canAdvanceOrderStatus(role: UserRole) {
   return role === 'admin' || role === 'employee'
 }
+
+export function canViewSalesReports(role: UserRole) {
+  return role === 'admin' || role === 'employee'
+}

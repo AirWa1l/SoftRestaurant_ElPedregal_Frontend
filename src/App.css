@@ -923,6 +923,32 @@
   font-weight: 700;
 }
 
+.sales-export-dialog-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 0;
+}
+
+.sales-export-dialog-text {
+  margin: 0;
+  font-size: 14px;
+  color: #495057;
+  text-align: center;
+}
+
+.sales-export-dialog-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.sales-export-option-btn {
+  width: 120px;
+  justify-content: center;
+}
+
 @media (max-width: 760px) {
   .sales-toolbar {
     margin-top: -12px;

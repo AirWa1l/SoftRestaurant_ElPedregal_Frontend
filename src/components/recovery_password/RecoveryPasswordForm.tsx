@@ -7,7 +7,7 @@ import { Message } from 'primereact/message'
 import { classNames } from 'primereact/utils'
 import 'primeicons/primeicons.css'
 
-const INITIAL_FORM: RecoveryPasswordFormData = {
+const INITIAL_FORM: { email: string } = {
   email: '',
 }
 

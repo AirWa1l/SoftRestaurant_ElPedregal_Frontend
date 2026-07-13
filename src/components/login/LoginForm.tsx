@@ -70,7 +70,12 @@ export function LoginForm({ onGoToRecovery, onGoToRegister }: Props) {
       const response = await userService.login(form)
 
       if (response.success) {
-        navigate('/home')
+        const currentUserResponse = await userService.getCurrentUser()
+        if (currentUserResponse.success && currentUserResponse.user?.role === 'user') {
+          navigate('/products')
+        } else {
+          navigate('/home')
+        }
       } else {
         setApiError(response.message)
       }

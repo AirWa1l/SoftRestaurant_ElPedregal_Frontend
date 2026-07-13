@@ -13,13 +13,13 @@ import type {
   ProfileFormErrors,
 } from '../types/profile'
 
-const API_BASE_URL_RAW = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+const API_BASE_URL_RAW = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')
 const API_BASE_URL = API_BASE_URL_RAW.replace(/\/auth$/, '')
-const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_BASE_URL || `${API_BASE_URL}/auth`
+const AUTH_API_BASE_URL = (import.meta.env.VITE_AUTH_API_BASE_URL || `${API_BASE_URL}/auth`).replace(/\/$/, '')
 const ACCESS_TOKEN_STORAGE_KEY = 'pedregal_access_token'
 
-let cachedCurrentUser: CurrentUser | null = null
 let cachedAccessToken: string | null = null
+let cachedCurrentUser: CurrentUser | null = null
 const currentUserListeners: Array<(u: CurrentUser | null) => void> = []
 
 function getStoredAccessToken() {

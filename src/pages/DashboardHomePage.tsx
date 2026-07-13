@@ -51,6 +51,12 @@ export function DashboardHomePage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (currentUser?.role === 'user') {
+      navigate('/products')
+    }
+  }, [currentUser, navigate])
+
   // Derived metrics
   const pendingCount = useMemo(() => orders.filter((o) => o.status === 'Pendiente').length, [orders])
   const prepCount = useMemo(() => orders.filter((o) => o.status === 'Preparación').length, [orders])

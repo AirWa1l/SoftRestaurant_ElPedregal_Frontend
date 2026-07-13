@@ -1,6 +1,6 @@
-import type { Category, CategoryListResponse } from '../types/category'
+import type { CategoryListResponse } from '../types/category'
 
-const API_BASE_URL_RAW = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+const API_BASE_URL_RAW = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')
 const API_BASE_URL = API_BASE_URL_RAW.replace(/\/auth$/, '')
 const ACCESS_TOKEN_STORAGE_KEY = 'pedregal_access_token'
 

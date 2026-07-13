@@ -6,6 +6,7 @@ import { InputText } from 'primereact/inputtext'
 import { Skeleton } from 'primereact/skeleton'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
+import { CustomerNavbar } from '../components/layout/CustomerNavbar'
 import { userService } from '../services/userService'
 import { categoryService } from '../services/categoryService'
 import { productService } from '../services/productService'
@@ -355,22 +356,28 @@ export function EditOrderPage() {
     }
   }
 
-  return (
-    <div className="dashboard-shell">
-      <aside className="dashboard-sidebar">
-        <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
-        <DashboardSidebarFooter
-          currentUser={currentUser}
-          onGoToEditProfile={() => navigate('/edit-profile')}
-        />
-      </aside>
+  const isCustomer = currentUser?.role === 'user'
 
-      <main className="dashboard-main flex flex-column gap-3" style={{ background: '#f8fafc' }}>
+  return (
+    <div className={isCustomer ? 'customer-shell' : 'dashboard-shell'}>
+      {isCustomer ? (
+        <CustomerNavbar />
+      ) : (
+        <aside className="dashboard-sidebar">
+          <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
+          <DashboardSidebarFooter
+            currentUser={currentUser}
+            onGoToEditProfile={() => navigate('/edit-profile')}
+          />
+        </aside>
+      )}
+
+      <main className={isCustomer ? 'customer-main flex flex-column gap-3' : 'dashboard-main flex flex-column gap-3'} style={{ background: '#f8fafc' }}>
         <Toast ref={toast} />
 
         <header className="flex justify-content-between align-items-center mb-2">
           <div>
-            <span className="dashboard-eyebrow">Operaciones</span>
+            {!isCustomer && <span className="dashboard-eyebrow">Operaciones</span>}
             <h1 className="dashboard-title text-2xl font-bold text-900 m-0">Editar Pedido #{number}</h1>
           </div>
           <Button
@@ -547,7 +554,7 @@ export function EditOrderPage() {
                   {/* Receipt Header */}
                   <div className="flex justify-content-between align-items-center">
                     <h2 className="text-base font-extrabold text-900 m-0">Editar Pedido #{number}</h2>
-                    <span className="bg-blue-100 text-primary-800 text-xs font-bold px-2 py-1 border-round-lg" style={{ color: '#1a3f66', background: '#dbeafe' }}>
+                    <span className="text-xs font-bold px-2 py-1 border-round-lg" style={{ color: isCustomer ? '#1e5d3b' : '#1a3f66', background: isCustomer ? '#edf7f2' : '#dbeafe' }}>
                       {totalItemCount} item{totalItemCount !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -668,7 +675,7 @@ export function EditOrderPage() {
                     </div>
                     <div className="flex justify-content-between text-base font-bold text-900 border-top-1 surface-border pt-2">
                       <span>Total</span>
-                      <span className="text-lg text-primary-800" style={{ color: '#1a3f66' }}>
+                      <span className="text-lg font-bold" style={{ color: isCustomer ? '#1e5d3b' : '#1a3f66' }}>
                         {subtotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
                       </span>
                     </div>
@@ -679,7 +686,7 @@ export function EditOrderPage() {
                       label={isSubmitting ? 'Guardando cambios...' : 'Guardar cambios'}
                       icon={isSubmitting ? 'pi pi-spin pi-spinner' : 'pi pi-check'}
                       className="w-full border-round-xl font-bold py-3 text-sm"
-                      style={{ background: '#1a3f66', borderColor: '#1a3f66' }}
+                      style={{ background: isCustomer ? '#1e5d3b' : '#1a3f66', borderColor: isCustomer ? '#1e5d3b' : '#1a3f66' }}
                       type="submit"
                       disabled={isSubmitting || totalItemCount === 0}
                     />

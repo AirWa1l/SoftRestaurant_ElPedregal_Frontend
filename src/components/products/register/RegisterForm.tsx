@@ -86,7 +86,7 @@ interface Props {
 }
 
 export function ProductForm({ onSuccess, onCancel }: Props) {
-  const [form, setForm] = useState<Product>(INITIAL_FORM)
+  const [form, setForm] = useState<ProductFormValues>(INITIAL_FORM)
   const [categories, setCategories] = useState<Category[]>([])
   const [errors, setErrors] = useState<ProductFormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
@@ -201,7 +201,7 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
       }
 
       setSubmitted(true)
-      onSuccess?.(form)
+      onSuccess?.(result.product || { id: '', ...form })
     } catch {
       setApiError('Ocurrió un error inesperado al guardar el producto.')
     } finally {

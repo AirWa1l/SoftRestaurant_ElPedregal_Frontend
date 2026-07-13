@@ -8,6 +8,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog'
 import { useNavigate } from 'react-router-dom'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
+import { CustomerNavbar } from '../components/layout/CustomerNavbar'
 import type { CurrentUser } from '../types/profile'
 import type { Category } from '../types/category'
 import { userService } from '../services/userService'
@@ -273,21 +274,27 @@ export function ProductsPage() {
     })
   }
 
-  return (
-    <div className="dashboard-shell">
-      <aside className="dashboard-sidebar">
-        <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
-        <DashboardSidebarFooter
-          currentUser={currentUser}
-          onGoToEditProfile={() => navigate('/edit-profile')}
-        />
-      </aside>
+  const isCustomer = userRole === 'user'
 
-      <main className="edit-profile-main">
+  return (
+    <div className={isCustomer ? 'customer-shell' : 'dashboard-shell'}>
+      {isCustomer ? (
+        <CustomerNavbar cartCount={cartCount} />
+      ) : (
+        <aside className="dashboard-sidebar">
+          <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
+          <DashboardSidebarFooter
+            currentUser={currentUser}
+            onGoToEditProfile={() => navigate('/edit-profile')}
+          />
+        </aside>
+      )}
+
+      <main className={isCustomer ? 'customer-main' : 'edit-profile-main'}>
         <Toast ref={toast} />
         <ConfirmDialog />
 
-        <div className="edit-profile-layout">
+        <div className={isCustomer ? 'customer-content' : 'edit-profile-layout'}>
           <div className="flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
             <div>
               <h1 className="text-2xl font-bold text-900 m-0">Productos</h1>
@@ -356,14 +363,14 @@ export function ProductsPage() {
               {filtered.map((product) => (
                 <div key={product.id} className="col-12 sm:col-6 md:col-4 lg:col-3">
                   <ProductCard
-                    product={product}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onAddToCart={!showActions ? handleAddToCart : undefined}
-                    quantityInCart={cartItems[product.id] ?? 0}
-                    showActions={showActions}
-                    canEdit={canEdit}
-                    canDelete={canDelete}
+                     product={product}
+                     onEdit={handleEdit}
+                     onDelete={handleDelete}
+                     onAddToCart={!showActions ? handleAddToCart : undefined}
+                     quantityInCart={cartItems[product.id] ?? 0}
+                     showActions={showActions}
+                     canEdit={canEdit}
+                     canDelete={canDelete}
                   />
                 </div>
               ))}
@@ -377,7 +384,7 @@ export function ProductsPage() {
             className="fixed bottom-0 right-0 m-4 p-3 border-round-xl shadow-6 flex align-items-center gap-3 z-5"
             style={{
               minWidth: '300px',
-              background: 'linear-gradient(135deg, #1e446c 0%, #1a3f66 100%)',
+              background: 'linear-gradient(135deg, #1e5d3b 0%, #16482d 100%)',
               color: '#fff',
               border: '1px solid rgba(255, 255, 255, 0.1)',
             }}

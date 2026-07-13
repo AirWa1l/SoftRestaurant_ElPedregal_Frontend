@@ -7,8 +7,10 @@ import { Message } from 'primereact/message'
 import { classNames } from 'primereact/utils'
 import 'primeicons/primeicons.css'
 
-const INITIAL_FORM: { email: string } = {
+const INITIAL_FORM: RecoveryPasswordFormData = {
   email: '',
+  password: '',
+  confirmPassword: '',
 }
 
 function validate(form: RecoveryPasswordFormData): RecoveryPasswordFormErrors {

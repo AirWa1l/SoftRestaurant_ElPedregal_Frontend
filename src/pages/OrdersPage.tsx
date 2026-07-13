@@ -5,6 +5,7 @@ import { Button } from 'primereact/button'
 import { Skeleton } from 'primereact/skeleton'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
+import { CustomerNavbar } from '../components/layout/CustomerNavbar'
 import { userService } from '../services/userService'
 import { orderService } from '../services/orderService'
 import { CancelOrderDialog } from '../components/orders/CancelOrderDialog'
@@ -124,22 +125,28 @@ export function OrdersPage() {
     setOrders((prev) => prev.filter((o) => o.status !== 'Facturado'))
   }
 
-  return (
-    <div className="dashboard-shell">
-      <aside className="dashboard-sidebar">
-        <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
-        <DashboardSidebarFooter
-          currentUser={currentUser}
-          onGoToEditProfile={() => navigate('/edit-profile')}
-        />
-      </aside>
+  const isCustomer = currentUser?.role === 'user'
 
-      <main className="dashboard-main flex flex-column gap-3" style={{ background: '#f8fafc' }}>
+  return (
+    <div className={isCustomer ? 'customer-shell' : 'dashboard-shell'}>
+      {isCustomer ? (
+        <CustomerNavbar />
+      ) : (
+        <aside className="dashboard-sidebar">
+          <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
+          <DashboardSidebarFooter
+            currentUser={currentUser}
+            onGoToEditProfile={() => navigate('/edit-profile')}
+          />
+        </aside>
+      )}
+
+      <main className={isCustomer ? 'customer-main flex flex-column gap-3' : 'dashboard-main flex flex-column gap-3'} style={{ background: '#f8fafc' }}>
         <Toast ref={toast} />
 
         <header className="flex justify-content-between align-items-center mb-2">
           <div>
-            <span className="dashboard-eyebrow">Operaciones</span>
+            {!isCustomer && <span className="dashboard-eyebrow">Operaciones</span>}
             <h1 className="dashboard-title text-2xl font-bold text-900 m-0">
               {isStaff ? 'Gestión de Pedidos Activos' : 'Mis Pedidos'}
             </h1>
@@ -148,7 +155,7 @@ export function OrdersPage() {
             label="Nuevo Pedido"
             icon="pi pi-plus"
             className="border-round-xl"
-            style={{ background: '#1a3f66', borderColor: '#1a3f66' }}
+            style={{ background: isCustomer ? '#1e5d3b' : '#1a3f66', borderColor: isCustomer ? '#1e5d3b' : '#1a3f66' }}
             onClick={() => navigate('/orders/new')}
           />
         </header>
@@ -170,7 +177,7 @@ export function OrdersPage() {
               label="Registrar primer pedido"
               icon="pi pi-plus"
               className="border-round-3xl font-bold py-2.5 px-4"
-              style={{ background: '#1a3f66', borderColor: '#1a3f66' }}
+              style={{ background: isCustomer ? '#1e5d3b' : '#1a3f66', borderColor: isCustomer ? '#1e5d3b' : '#1a3f66' }}
               onClick={() => navigate('/orders/new')}
             />
           </div>

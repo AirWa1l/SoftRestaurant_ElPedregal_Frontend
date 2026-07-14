@@ -120,6 +120,7 @@ export function ProductEditForm({ productId, onSuccess, onCancel }: Props) {
         formData.append('name', form.name)
         formData.append('category', form.category)
         formData.append('description', form.description ?? '')
+        formData.append('isAvailable', String(form.isAvailable))
         formData.append('image', imageFile)
         result = await productService.update(productId, formData)
       } else {
@@ -127,6 +128,11 @@ export function ProductEditForm({ productId, onSuccess, onCancel }: Props) {
           name: form.name,
           category: form.category,
           description: form.description,
+          isAvailable: form.isAvailable,
+        }
+        const externalUrl = form.imageUrl?.trim()
+        if (externalUrl && /^https?:\/\//i.test(externalUrl)) {
+          payload.imageUrl = externalUrl
         }
         result = await productService.update(productId, payload)
       }
@@ -203,23 +209,20 @@ export function ProductEditForm({ productId, onSuccess, onCancel }: Props) {
           {errors.category && <small className="p-error block mt-1" role="alert">{errors.category}</small>}
         </div>
 
-        <div className="grid grid-nogutter gap-3 mb-3">
-          <div className="col-12 md:col-6 flex flex-column gap-2">
-            <label className="text-xs font-bold text-primary uppercase">
-              Precio (COP)
-            </label>
-            <InputText
-              value={
-                form.price != null
-                  ? form.price.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
-                  : ''
-              }
-              disabled
-              className="surface-100"
-            />
-            <small className="text-500 text-xs">El precio es inmutable tras la creación del producto.</small>
-          </div>
-
+        <div className="flex flex-column gap-2 mb-3">
+          <label className="text-xs font-bold text-primary uppercase">
+            Precio (COP)
+          </label>
+          <InputText
+            value={
+              form.price != null
+                ? form.price.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
+                : ''
+            }
+            disabled
+            className="surface-100"
+          />
+          <small className="text-500 text-xs">El precio es inmutable tras la creación del producto.</small>
         </div>
 
         <div className="flex flex-column gap-2 mb-3">

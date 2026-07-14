@@ -90,7 +90,11 @@ function ProductCard({ product, onEdit, onDelete, onAddToCart, quantityInCart, s
         <span className="text-primary font-bold text-base">{(product.price || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}</span>
       </div>
 
-      {quantityInCart ? <div className="text-xs text-600">{quantityInCart} en pedido</div> : null}
+      {quantityInCart ? (
+        <div className="text-xs text-600">
+          <span>{quantityInCart} en pedido</span>
+        </div>
+      ) : null}
 
       <div className="flex gap-2">
         {showActions && (
@@ -105,7 +109,7 @@ function ProductCard({ product, onEdit, onDelete, onAddToCart, quantityInCart, s
         )}
 
         {!showActions && onAddToCart && (
-          <Button label={quantityInCart ? ('Añadir de nuevo (' + quantityInCart + ')') : 'Agregar al pedido'} icon="pi pi-shopping-cart" severity="success" className="w-full border-round-lg" onClick={() => onAddToCart(product)} />
+          <Button label={quantityInCart ? ('Añadir de nuevo (' + quantityInCart + ')') : 'Agregar al pedido'} icon="pi pi-shopping-cart" severity="success" className="w-full border-round-lg" disabled={!product.isAvailable} onClick={() => onAddToCart(product)} />
         )}
       </div>
     </div>
@@ -167,23 +171,8 @@ export function ProductsPage() {
             setCategories(categoriesRes.categories)
           }
 
-          let adjustments: Record<string, number> = {}
-          const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
-          if (cachedAdjustments) {
-            try {
-              adjustments = JSON.parse(cachedAdjustments)
-            } catch {}
-          }
-
           if (productsRes.success) {
-            const adjusted = (productsRes.products || []).map((p) => {
-              const adj = adjustments[p.id] || 0
-              return {
-                ...p,
-                stock: Math.max(0, p.stock - adj),
-              }
-            })
-            setProducts(adjusted)
+            setProducts(productsRes.products || [])
           } else {
             toast.current?.show({ severity: 'error', summary: 'Error', detail: productsRes.message, life: 4000 })
             setProducts([])
@@ -226,17 +215,17 @@ export function ProductsPage() {
   }
 
   function handleAddToCart(product: Product) {
-    const currentQty = cartItems[product.id] ?? 0
-    if (!product.isAvailable || product.stock === 0 || currentQty >= product.stock) {
+    if (!product.isAvailable) {
       toast.current?.show({
         severity: 'warn',
         summary: 'No disponible',
-        detail: 'No se puede agregar más de este producto al pedido.',
+        detail: 'No se puede agregar este producto al pedido.',
         life: 3000,
       })
       return
     }
 
+    const currentQty = cartItems[product.id] ?? 0
     const nextCart = {
       ...cartItems,
       [product.id]: currentQty + 1,

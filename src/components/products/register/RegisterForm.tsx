@@ -17,6 +17,7 @@ type ProductFormValues = {
   price: number | null
   description: string
   imageUrl: string
+  isAvailable: boolean
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ const INITIAL_FORM: ProductFormValues = {
   price: null,
   description: '',
   imageUrl: '',
+  isAvailable: true,
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -177,12 +179,17 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
         formData.append('image', imageFile)
         result = await productService.create(formData)
       } else {
-        result = await productService.create({
+        const payload: Partial<Product> = {
           name: form.name,
           category: form.category,
           price: form.price,
           description: form.description,
-        })
+        }
+        const externalUrl = form.imageUrl.trim()
+        if (externalUrl && !externalUrl.startsWith('blob:')) {
+          payload.imageUrl = externalUrl
+        }
+        result = await productService.create(payload)
       }
 
       if (!result.success) {
@@ -274,27 +281,24 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
         </div>
 
         {/* ── Price ──────────────────────────────────────────────── */}
-        <div className="grid grid-nogutter gap-3 mb-3">
-          <div className="col-12 md:col-6 flex flex-column gap-2">
-            <label className="text-xs font-bold text-primary uppercase" htmlFor="product-price">
-              Precio (COP) <span className="text-red-500">*</span>
-            </label>
-            <InputNumber
-              inputId="product-price"
-              inputClassName={classNames('w-full', { 'p-invalid': errors.price })}
-              placeholder="0"
-              value={form.price}
-              onValueChange={(e) => handleChange('price', e.value ?? null)}
-              mode="currency"
-              currency="COP"
-              locale="es-CO"
-              min={0}
-            />
-            {errors.price && (
-              <small className="p-error block mt-1" role="alert">{errors.price}</small>
-            )}
-          </div>
-
+        <div className="flex flex-column gap-2 mb-3">
+          <label className="text-xs font-bold text-primary uppercase" htmlFor="product-price">
+            Precio (COP) <span className="text-red-500">*</span>
+          </label>
+          <InputNumber
+            inputId="product-price"
+            inputClassName={classNames('w-full', { 'p-invalid': errors.price })}
+            placeholder="0"
+            value={form.price}
+            onValueChange={(e) => handleChange('price', e.value ?? null)}
+            mode="currency"
+            currency="COP"
+            locale="es-CO"
+            min={0}
+          />
+          {errors.price && (
+            <small className="p-error block mt-1" role="alert">{errors.price}</small>
+          )}
         </div>
 
         {/* ── Description ────────────────────────────────────────────────── */}

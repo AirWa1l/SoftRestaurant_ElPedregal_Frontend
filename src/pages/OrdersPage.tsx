@@ -97,22 +97,6 @@ export function OrdersPage() {
     if (!orderToCancel) return
     setIsCancelling(true)
 
-    const targetOrder = orders.find((o) => o.number === orderToCancel.number)
-    if (targetOrder && targetOrder.items) {
-      const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
-      if (cachedAdjustments) {
-        try {
-          const adjustments = JSON.parse(cachedAdjustments)
-          targetOrder.items.forEach((item: { productId: string; quantity: number }) => {
-            if (adjustments[item.productId] !== undefined) {
-              adjustments[item.productId] = Math.max(0, adjustments[item.productId] - item.quantity)
-            }
-          })
-          window.localStorage.setItem('pedregal_stock_adjustments', JSON.stringify(adjustments))
-        } catch {}
-      }
-    }
-
     const result = await orderService.remove(orderToCancel.number)
     await loadOrders()
 

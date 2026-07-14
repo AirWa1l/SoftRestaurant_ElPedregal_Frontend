@@ -7,7 +7,6 @@ export interface Product {
   description?: string
   imageUrl?: string
   isAvailable: boolean
-  stock: number
 }
 
 // ─── Form ─────────────────────────────────────────────────────────────────────
@@ -19,7 +18,6 @@ export interface ProductFormErrors {
   description?: string
   imageUrl?: string
   isAvailable?: string
-  stock?: string
 }
 
 // ─── Service responses ────────────────────────────────────────────────────────

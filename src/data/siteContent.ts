@@ -40,8 +40,8 @@ export const siteContent = {
     { label: 'Dashboard', href: '/home' },
     { label: 'Pedidos', href: '/orders' },
     { label: 'Productos', href: '/products', roles: ['admin', 'employee', 'user'] },
-    { label: 'Usuarios', href: '/home', roles: ['admin'] },
-    { label: 'Configuración', href: '/home', roles: ['admin'] },
+    // { label: 'Usuarios', href: '/home', roles: ['admin'] },
+    //{ label: 'Configuración', href: '/home', roles: ['admin'] },
     { label: 'Ventas', href: '/sales', roles: ['admin', 'employee'] }
   ] satisfies NavigationLink[],
   hero: {

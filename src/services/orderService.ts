@@ -39,6 +39,7 @@ const STATUS_BACKEND_TO_FRONTEND: Record<string, OrderStatusFrontend> = {
   CONFIRMADO: 'Confirmado',
   EN_PREPARACION: 'Preparación',
   ENTREGADO: 'Entregado',
+  FACTURADO: 'Facturado',
 }
 
 const STATUS_FRONTEND_TO_BACKEND: Record<string, string> = {
@@ -46,7 +47,7 @@ const STATUS_FRONTEND_TO_BACKEND: Record<string, string> = {
   Confirmado: 'CONFIRMADO',
   'Preparación': 'EN_PREPARACION',
   Entregado: 'ENTREGADO',
-  Facturado: 'ENTREGADO',
+  Facturado: 'FACTURADO',
 }
 
 function mapBackendToFrontend(backendStatus: string): OrderStatusFrontend {
@@ -55,6 +56,23 @@ function mapBackendToFrontend(backendStatus: string): OrderStatusFrontend {
 
 function mapFrontendToBackend(frontendStatus: string): string {
   return STATUS_FRONTEND_TO_BACKEND[frontendStatus] || 'PENDIENTE'
+}
+
+function mapOrderError(message: string): string {
+  switch (message) {
+    case 'invalid_status_transition':
+      return 'No se puede cambiar el pedido a ese estado desde su estado actual.'
+    case 'forbidden_transition_for_role':
+    case 'forbidden_not_order_owner':
+    case 'forbidden':
+      return 'No tienes permisos para realizar esta acción sobre el pedido.'
+    case 'order_not_editable':
+      return 'El pedido ya no se puede editar (está en preparación o finalizado).'
+    case 'order_not_found':
+      return 'El pedido no fue encontrado.'
+    default:
+      return 'No fue posible completar la acción sobre el pedido.'
+  }
 }
 
 function formatCurrency(value: number): string {
@@ -70,6 +88,23 @@ function getLocalOrders(): Order[] {
 
 function saveLocalOrders(orders: Order[]) {
   window.localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders))
+}
+
+// ─── Pedidos de invitado ──────────────────────────────────────────────────────
+// Se guardan en sessionStorage (por pestaña): un invitado ve solo los pedidos
+// que hizo en esta sesión, y se borran al cerrar la página. Nunca lee el espejo
+// compartido de localStorage, para no mostrarle pedidos de otros usuarios.
+const GUEST_ORDERS_KEY = 'pedregal_guest_orders'
+
+function getGuestOrders(): Order[] {
+  if (typeof window === 'undefined') return []
+  const cached = window.sessionStorage.getItem(GUEST_ORDERS_KEY)
+  if (!cached) return []
+  try { return JSON.parse(cached) } catch { return [] }
+}
+
+function saveGuestOrders(orders: Order[]) {
+  window.sessionStorage.setItem(GUEST_ORDERS_KEY, JSON.stringify(orders))
 }
 
 function generateLocalOrderNumber(): string {
@@ -101,55 +136,103 @@ function mapApiOrderToLocalOrder(apiOrder: any): Order {
   return {
     _id: apiOrder._id,
     number: apiOrder.number?.toString().padStart(3, '0') || generateLocalOrderNumber(),
-    table: '',
+    table: apiOrder.table ?? apiOrder.customerName ?? '',
     products: buildProductsSummary(apiOrder.items || []),
     total: formatCurrency(total),
     status: mapBackendToFrontend(apiOrder.status),
     time: 'hace 1 min',
+    notes: apiOrder.notes ?? '',
     items,
   }
 }
 
 export const orderService = {
+  // Cancelar = transición a CANCELADO en el backend (queda historial).
   async remove(idOrNumber: string): Promise<OrderResponse> {
-    try {
-      const orders = getLocalOrders()
+    const token = getStoredAccessToken()
+
+    // Invitado: cancela solo en su sesión.
+    if (!token) {
+      const orders = getGuestOrders()
       const order = orders.find((o) => o._id === idOrNumber || o.number === idOrNumber)
-      const filtered = orders.filter((o) => o._id !== idOrNumber && o.number !== idOrNumber)
-      saveLocalOrders(filtered)
-      return { success: true, message: 'Pedido eliminado.', order }
-    } catch {
-      return { success: false, message: 'No fue posible eliminar el pedido.' }
+      saveGuestOrders(orders.filter((o) => o._id !== idOrNumber && o.number !== idOrNumber))
+      return { success: true, message: 'Pedido cancelado.', order }
+    }
+
+    const orders = getLocalOrders()
+    const order = orders.find((o) => o._id === idOrNumber || o.number === idOrNumber)
+    if (!order?._id) {
+      return { success: false, message: 'No se encontró el pedido para cancelar.' }
+    }
+
+    try {
+      await requestJson(`/orders/${order._id}/status`, {
+        method: 'PATCH',
+        body: { status: 'CANCELADO' },
+      })
+      saveLocalOrders(orders.filter((o) => o._id !== idOrNumber && o.number !== idOrNumber))
+      return { success: true, message: 'Pedido cancelado.', order }
+    } catch (error) {
+      return { success: false, message: mapOrderError((error as Error).message) }
     }
   },
 
   async getAll(statusFilter?: string): Promise<OrderListResponse> {
+    const token = getStoredAccessToken()
+
+    // Invitado: solo sus pedidos de esta sesión; nunca el espejo compartido.
+    if (!token) {
+      let orders = getGuestOrders()
+      if (statusFilter) orders = orders.filter((o) => o.status === statusFilter)
+      return { success: true, orders }
+    }
+
     try {
+      const result = await requestJson<{ message: string; orders: any[] }>('/orders')
+      const mapped = (result.orders || []).map(mapApiOrderToLocalOrder)
+
+      // Espejo local: mantiene el _id disponible para las acciones (cancelar, estado).
+      saveLocalOrders(mapped)
+
+      let filtered = mapped
+      if (statusFilter) {
+        filtered = mapped.filter((o) => o.status === statusFilter)
+      }
+      return { success: true, orders: filtered }
+    } catch {
+      // Sin conexión con el backend: usamos el último espejo local conocido.
       const orders = getLocalOrders()
       let filtered = orders
       if (statusFilter) {
         filtered = orders.filter((o) => o.status === statusFilter)
       }
       return { success: true, orders: filtered }
-    } catch {
-      return { success: false, message: 'No fue posible cargar los pedidos.', orders: [] }
     }
   },
 
   async getById(idOrNumber: string): Promise<OrderResponse> {
-    try {
-      const orders = getLocalOrders()
-      const order = orders.find((o) => o._id === idOrNumber || o.number === idOrNumber)
-      if (!order) {
-        return { success: false, message: `Pedido #${idOrNumber} no encontrado.` }
+    const token = getStoredAccessToken()
+
+    if (token) {
+      try {
+        const result = await requestJson<{ message: string; order: any }>(`/orders/${idOrNumber}`)
+        return { success: true, order: mapApiOrderToLocalOrder(result.order) }
+      } catch {
+        // Cae al respaldo local del espejo.
       }
-      return { success: true, order }
-    } catch {
-      return { success: false, message: 'No fue posible cargar el pedido.' }
     }
+
+    const pool = token ? getLocalOrders() : getGuestOrders()
+    const order = pool.find((o) => o._id === idOrNumber || o.number === idOrNumber)
+    if (!order) {
+      return { success: false, message: `Pedido #${idOrNumber} no encontrado.` }
+    }
+    return { success: true, order }
   },
 
   async create(payload: CreateOrderPayload): Promise<OrderResponse> {
+    const token = getStoredAccessToken()
+
     try {
       const result = await requestJson<{ message: string; order: any }>('/orders', {
         method: 'POST',
@@ -157,14 +240,20 @@ export const orderService = {
           items: payload.items,
           ...(payload.customerName ? { customerName: payload.customerName } : {}),
           ...(payload.customerPhone ? { customerPhone: payload.customerPhone } : {}),
+          ...(payload.table ? { table: payload.table } : {}),
+          ...(payload.notes ? { notes: payload.notes } : {}),
         },
       })
       const localOrder = mapApiOrderToLocalOrder(result.order)
       if (payload.table) localOrder.table = payload.table
       if (payload.notes) localOrder.notes = payload.notes
 
-      const orders = getLocalOrders()
-      saveLocalOrders([localOrder, ...orders])
+      // Autenticado → espejo local; invitado → su sesión (sessionStorage).
+      if (token) {
+        saveLocalOrders([localOrder, ...getLocalOrders()])
+      } else {
+        saveGuestOrders([localOrder, ...getGuestOrders()])
+      }
 
       return { success: true, message: 'Pedido creado correctamente.', order: localOrder }
     } catch {
@@ -192,8 +281,11 @@ export const orderService = {
         })),
       }
 
-      const orders = getLocalOrders()
-      saveLocalOrders([newOrder, ...orders])
+      if (token) {
+        saveLocalOrders([newOrder, ...getLocalOrders()])
+      } else {
+        saveGuestOrders([newOrder, ...getGuestOrders()])
+      }
 
       return {
         success: true,
@@ -204,17 +296,18 @@ export const orderService = {
   },
 
   async updateItems(idOrNumber: string, payload: UpdateOrderPayload): Promise<OrderResponse> {
-    try {
-      const orders = getLocalOrders()
+    const token = getStoredAccessToken()
+
+    // Invitado: edita en su sesión.
+    if (!token) {
+      const orders = getGuestOrders()
       const index = orders.findIndex((o) => o._id === idOrNumber || o.number === idOrNumber)
       if (index === -1) {
         return { success: false, message: 'Pedido no encontrado.' }
       }
-
       const updated = { ...orders[index] }
       if (payload.table !== undefined) updated.table = payload.table
       if (payload.notes !== undefined) updated.notes = payload.notes
-
       if (payload.items) {
         updated.items = payload.items.map((item) => ({
           productId: item.product,
@@ -226,55 +319,71 @@ export const orderService = {
           quantity: item.quantity,
         })))
       }
-
       orders[index] = updated
-      saveLocalOrders(orders)
-
+      saveGuestOrders(orders)
       return { success: true, message: 'Pedido actualizado correctamente.', order: updated }
-    } catch {
-      return { success: false, message: 'No fue posible actualizar el pedido.' }
+    }
+
+    // Autenticado: edita en el backend.
+    if (!payload.items) {
+      return { success: false, message: 'No hay ítems para actualizar.' }
+    }
+    try {
+      const result = await requestJson<{ message: string; order: any }>(`/orders/${idOrNumber}`, {
+        method: 'PATCH',
+        body: {
+          items: payload.items.map((item) => ({ product: item.product, quantity: item.quantity })),
+          ...(payload.table !== undefined ? { table: payload.table } : {}),
+          ...(payload.notes !== undefined ? { notes: payload.notes } : {}),
+        },
+      })
+      return { success: true, message: 'Pedido actualizado correctamente.', order: mapApiOrderToLocalOrder(result.order) }
+    } catch (error) {
+      return { success: false, message: mapOrderError((error as Error).message) }
     }
   },
 
   async updateStatus(idOrNumber: string, frontendStatus: OrderStatusFrontend, cancelReason?: string): Promise<OrderResponse> {
-    const orders = getLocalOrders()
-    const order = orders.find((o) => o._id === idOrNumber || o.number === idOrNumber)
-
-    if (!order) {
-      return { success: false, message: 'Pedido no encontrado.' }
-    }
-
+    const token = getStoredAccessToken()
     const backendStatus = mapFrontendToBackend(frontendStatus)
 
-    if (order._id) {
-      try {
-        await requestJson(`/orders/${order._id}/status`, {
-          method: 'PATCH',
-          body: { status: backendStatus },
-        })
-      } catch {
-        // If API fails, still update localStorage (offline fallback)
+    // Invitado: solo en su sesión.
+    if (!token) {
+      const orders = getGuestOrders()
+      const updated = orders.map((o) =>
+        o._id === idOrNumber || o.number === idOrNumber
+          ? { ...o, status: frontendStatus, ...(cancelReason ? { cancelReason } : {}) }
+          : o
+      )
+      saveGuestOrders(updated)
+      return {
+        success: true,
+        message: `Estado actualizado a: ${frontendStatus}`,
+        order: updated.find((o) => o._id === idOrNumber || o.number === idOrNumber),
       }
     }
 
-    const updatedOrders = orders.map((o) => {
-      if (o._id === idOrNumber || o.number === idOrNumber) {
-        const updated = { ...o, status: frontendStatus }
-        if (cancelReason) updated.cancelReason = cancelReason
-        return updated
-      }
-      return o
-    })
-
-    if (frontendStatus === 'Facturado' || frontendStatus === 'Entregado') {
-      saveLocalOrders(updatedOrders)
-    } else if (frontendStatus === 'Preparación') {
-      saveLocalOrders(updatedOrders)
-    } else if (frontendStatus === 'Confirmado') {
-      saveLocalOrders(updatedOrders)
-    } else {
-      saveLocalOrders(updatedOrders)
+    const orders = getLocalOrders()
+    const order = orders.find((o) => o._id === idOrNumber || o.number === idOrNumber)
+    if (!order?._id) {
+      return { success: false, message: 'No se encontró el pedido.' }
     }
+
+    try {
+      await requestJson(`/orders/${order._id}/status`, {
+        method: 'PATCH',
+        body: { status: backendStatus },
+      })
+    } catch (error) {
+      return { success: false, message: mapOrderError((error as Error).message) }
+    }
+
+    const updatedOrders = orders.map((o) =>
+      o._id === idOrNumber || o.number === idOrNumber
+        ? { ...o, status: frontendStatus, ...(cancelReason ? { cancelReason } : {}) }
+        : o
+    )
+    saveLocalOrders(updatedOrders)
 
     return {
       success: true,

@@ -197,6 +197,11 @@ export const userService = {
     } finally {
       setStoredAccessToken(null)
       emitCurrentUser(null)
+      // Limpia el espejo de pedidos para que el siguiente usuario no vea los del anterior.
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('pedregal_orders')
+        window.sessionStorage.removeItem('pedregal_guest_orders')
+      }
     }
   },
 

@@ -29,6 +29,9 @@ export interface CreateOrderPayload {
   items: Array<{ product: string; quantity: number; name?: string }>
   table?: string
   notes?: string
+  // Datos del invitado (pedido sin cuenta): nombre y teléfono.
+  customerName?: string
+  customerPhone?: string
 }
 
 export interface UpdateOrderPayload {

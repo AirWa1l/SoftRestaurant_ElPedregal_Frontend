@@ -1,0 +1,27 @@
+/* Botón flotante de WhatsApp (FAB): redondo, abajo a la derecha. */
+.whatsapp-fab.p-button {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 6rem; /* sube el botón para no chocar con el banner del carrito */
+  width: 3.5rem;
+  height: 3.5rem;
+  background-color: #25d366;
+  border-color: #25d366;
+  color: #fff;
+  font-size: 1.35rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+}
+
+.whatsapp-fab.p-button:enabled:hover {
+  background-color: #1ebe5d;
+  border-color: #1ebe5d;
+  color: #fff;
+}
+
+/* Estado "preparado" mientras no hay número configurado. */
+.whatsapp-fab.p-button:disabled {
+  background-color: #9ca3af;
+  border-color: #9ca3af;
+  opacity: 1;
+}

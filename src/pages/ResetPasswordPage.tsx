@@ -84,7 +84,7 @@ export function ResetPasswordPage() {
       if (response.success) {
         setIsSuccess(true)
         setTimeout(() => {
-          navigate('/')
+          navigate('/login')
         }, 3000)
       } else {
         setApiError(response.message)
@@ -172,7 +172,7 @@ export function ResetPasswordPage() {
           <p className="text-sm text-600 m-0">
             ¿Recuerdas tu contraseña?{' '}
             <a
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/login')}
               className="text-primary no-underline font-bold hover:underline transition-colors transition-duration-150 cursor-pointer"
             >
               Inicia sesión

@@ -7,7 +7,7 @@ export function LogoutButton() {
 
   async function handleLogout() {
     await userService.logout()
-    navigate('/')
+    navigate('/login')
   }
 
   return (

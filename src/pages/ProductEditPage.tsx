@@ -26,7 +26,7 @@ export function ProductEditPage() {
           navigate('/products')
         }
       } else {
-        navigate('/')
+        navigate('/login')
       }
 
       setIsCheckingAccess(false)

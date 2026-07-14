@@ -107,11 +107,7 @@ export function CustomerNavbar({ cartCount = 0 }: Props) {
               onClick={handleLogout}
             />
           ) : (
-            <Button
-              label="Mi cuenta"
-              className="customer-account-btn border-round-3xl py-2 px-3 text-sm font-semibold"
-              onClick={() => navigate('/edit-profile')}
-            />
+            ""
           )}
         </div>
       </div>

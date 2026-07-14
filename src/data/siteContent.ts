@@ -27,6 +27,10 @@ type DashboardRecentOrder = {
 export const siteContent = {
   brand: 'El Pedregal',
   tagline: 'SoftRestaurant',
+  whatsapp: {
+    phone: '', // Modificar por el número del Pedregal
+    defaultMessage: 'Hola, quiero hacer un pedido en El Pedregal',
+  },
   dashboardUser: {
     initials: 'MC',
     name: 'María Cajero',

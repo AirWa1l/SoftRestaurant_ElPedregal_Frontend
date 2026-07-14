@@ -10,7 +10,7 @@ import { NewOrderPage } from './pages/NewOrderPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { EditOrderPage } from './pages/EditOrderPage'
 import { SalesPage } from './pages/SalesPage'
-import { WhatsAppButton } from './components/layout/WhatsAppButton'
+import { WhatsAppButton } from './components/layout/whatsapp/WhatsAppButton'
 import './App.css'
 
 import { PrimeReactProvider } from 'primereact/api';

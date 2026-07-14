@@ -79,6 +79,12 @@ export function CustomerNavbar({ cartCount = 0 }: Props) {
             >
               Mis pedidos
             </Link>
+            <Link
+              to="/edit-profile"
+              className={`customer-nav__link no-underline ${isLinkActive('/edit-profile') ? 'active' : ''}`}
+            >
+              Mi cuenta
+            </Link>
           </nav>
         </div>
 
@@ -101,11 +107,7 @@ export function CustomerNavbar({ cartCount = 0 }: Props) {
               onClick={handleLogout}
             />
           ) : (
-            <Button
-              label="Mi cuenta"
-              className="customer-account-btn border-round-3xl py-2 px-3 text-sm font-semibold"
-              onClick={() => navigate('/edit-profile')}
-            />
+            ""
           )}
         </div>
       </div>

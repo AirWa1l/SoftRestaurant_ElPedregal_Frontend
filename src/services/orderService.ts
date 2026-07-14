@@ -101,11 +101,12 @@ function mapApiOrderToLocalOrder(apiOrder: any): Order {
   return {
     _id: apiOrder._id,
     number: apiOrder.number?.toString().padStart(3, '0') || generateLocalOrderNumber(),
-    table: '',
+    table: apiOrder.table ?? apiOrder.customerName ?? '',
     products: buildProductsSummary(apiOrder.items || []),
     total: formatCurrency(total),
     status: mapBackendToFrontend(apiOrder.status),
     time: 'hace 1 min',
+    notes: apiOrder.notes ?? '',
     items,
   }
 }
@@ -125,27 +126,41 @@ export const orderService = {
 
   async getAll(statusFilter?: string): Promise<OrderListResponse> {
     try {
+      const result = await requestJson<{ message: string; orders: any[] }>('/orders')
+      const mapped = (result.orders || []).map(mapApiOrderToLocalOrder)
+
+      // Espejo local: mantiene el _id disponible para las acciones que aún
+      // no se han migrado al backend (cambiar estado, cancelar, editar ítems).
+      saveLocalOrders(mapped)
+
+      let filtered = mapped
+      if (statusFilter) {
+        filtered = mapped.filter((o) => o.status === statusFilter)
+      }
+      return { success: true, orders: filtered }
+    } catch {
+      // Sin conexión con el backend: usamos el último espejo local conocido.
       const orders = getLocalOrders()
       let filtered = orders
       if (statusFilter) {
         filtered = orders.filter((o) => o.status === statusFilter)
       }
       return { success: true, orders: filtered }
-    } catch {
-      return { success: false, message: 'No fue posible cargar los pedidos.', orders: [] }
     }
   },
 
   async getById(idOrNumber: string): Promise<OrderResponse> {
     try {
+      const result = await requestJson<{ message: string; order: any }>(`/orders/${idOrNumber}`)
+      return { success: true, order: mapApiOrderToLocalOrder(result.order) }
+    } catch {
+      // Respaldo: si el backend falla, buscamos en el espejo local.
       const orders = getLocalOrders()
       const order = orders.find((o) => o._id === idOrNumber || o.number === idOrNumber)
       if (!order) {
         return { success: false, message: `Pedido #${idOrNumber} no encontrado.` }
       }
       return { success: true, order }
-    } catch {
-      return { success: false, message: 'No fue posible cargar el pedido.' }
     }
   },
 
@@ -157,6 +172,8 @@ export const orderService = {
           items: payload.items,
           ...(payload.customerName ? { customerName: payload.customerName } : {}),
           ...(payload.customerPhone ? { customerPhone: payload.customerPhone } : {}),
+          ...(payload.table ? { table: payload.table } : {}),
+          ...(payload.notes ? { notes: payload.notes } : {}),
         },
       })
       const localOrder = mapApiOrderToLocalOrder(result.order)

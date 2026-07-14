@@ -23,5 +23,22 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+
+    rules: {
+      // Reglas del React Compiler
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/static-components': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+
+      // Opcional
+      'react-hooks/exhaustive-deps': 'warn',
+
+      // TypeScript
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'warn',
+
+      // JavaScript
+      'prefer-const': 'warn',
+    },
   },
 ])

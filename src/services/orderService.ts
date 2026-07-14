@@ -153,7 +153,11 @@ export const orderService = {
     try {
       const result = await requestJson<{ message: string; order: any }>('/orders', {
         method: 'POST',
-        body: { items: payload.items },
+        body: {
+          items: payload.items,
+          ...(payload.customerName ? { customerName: payload.customerName } : {}),
+          ...(payload.customerPhone ? { customerPhone: payload.customerPhone } : {}),
+        },
       })
       const localOrder = mapApiOrderToLocalOrder(result.order)
       if (payload.table) localOrder.table = payload.table

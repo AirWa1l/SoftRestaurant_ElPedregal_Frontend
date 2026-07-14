@@ -67,7 +67,8 @@ export function NewOrderPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   // Order Details
-  const [customerName, setCustomerName] = useState('Mesa 4')
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
   const [notes, setNotes] = useState('')
   const [cart, setCart] = useState<Record<string, CartItem>>({})
   const [activeCategory, setActiveCategory] = useState<string>('')
@@ -252,11 +253,23 @@ export function NewOrderPage() {
   async function handleSubmitOrder(e: React.FormEvent) {
     e.preventDefault()
 
+    const guest = !currentUser
+
     if (!customerName.trim()) {
       toast.current?.show({
         severity: 'error',
         summary: 'Campo Requerido',
-        detail: 'Por favor ingresa la mesa o ubicación.',
+        detail: guest ? 'Por favor ingresa tu nombre.' : 'Por favor ingresa la mesa o ubicación.',
+        life: 3000,
+      })
+      return
+    }
+
+    if (guest && !customerPhone.trim()) {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Campo Requerido',
+        detail: 'Por favor ingresa tu teléfono para poder contactarte.',
         life: 3000,
       })
       return
@@ -285,6 +298,9 @@ export function NewOrderPage() {
         items,
         table: customerName.trim(),
         notes: notes.trim(),
+        ...(guest
+          ? { customerName: customerName.trim(), customerPhone: customerPhone.trim() }
+          : {}),
       })
 
       if (!response.success) {
@@ -330,14 +346,17 @@ export function NewOrderPage() {
 
   function handleCancelOrder() {
     window.localStorage.removeItem('pedregal_cart')
-    if (currentUser?.role === 'user') {
+    // Invitado o cliente vuelven al menú; el personal vuelve al tablero.
+    if (!currentUser || currentUser.role === 'user') {
       navigate('/products')
     } else {
       navigate('/home')
     }
   }
 
-  const isCustomer = currentUser?.role === 'user'
+  // Un invitado (sin sesión) también se trata como cliente.
+  const isGuest = !currentUser
+  const isCustomer = isGuest || currentUser?.role === 'user'
 
   return (
     <div className={isCustomer ? 'customer-shell' : 'dashboard-shell'}>
@@ -513,20 +532,40 @@ export function NewOrderPage() {
                     </span>
                   </div>
 
-                  {/* Mesa / Ubicación input */}
+                  {/* Nombre (cliente) / Mesa (personal) input */}
                   <div className="flex flex-column gap-1">
-                    <label htmlFor="customer" className="text-xs font-bold text-500 uppercase">Mesa / Ubicación</label>
+                    <label htmlFor="customer" className="text-xs font-bold text-500 uppercase">
+                      {isCustomer ? 'Nombre' : 'Mesa / Ubicación'}
+                    </label>
                     <InputText
                       id="customer"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Mesa 4"
+                      placeholder={isCustomer ? 'Tu nombre' : 'Mesa 4'}
                       className="w-full border-round-lg text-sm"
                       disabled={isSubmitting}
                       required
                       style={{ padding: '8px 12px' }}
                     />
                   </div>
+
+                  {/* Teléfono: solo para invitados (pedido sin cuenta) */}
+                  {isGuest && (
+                    <div className="flex flex-column gap-1">
+                      <label htmlFor="phone" className="text-xs font-bold text-500 uppercase">Teléfono</label>
+                      <InputText
+                        id="phone"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="Ej: 3001234567"
+                        keyfilter="int"
+                        className="w-full border-round-lg text-sm"
+                        disabled={isSubmitting}
+                        required
+                        style={{ padding: '8px 12px' }}
+                      />
+                    </div>
+                  )}
 
                   {/* Notas (Opcional) input */}
                   <div className="flex flex-column gap-1">

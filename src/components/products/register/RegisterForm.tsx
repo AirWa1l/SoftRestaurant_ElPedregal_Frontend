@@ -17,8 +17,6 @@ type ProductFormValues = {
   price: number | null
   description: string
   imageUrl: string
-  isAvailable: boolean
-  stock: number
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -29,8 +27,6 @@ const INITIAL_FORM: ProductFormValues = {
   price: null,
   description: '',
   imageUrl: '',
-  isAvailable: true,
-  stock: 0,
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -55,10 +51,6 @@ function validate(
     errors.price = 'El precio es obligatorio'
   } else if (form.price <= 0) {
     errors.price = 'El precio debe ser mayor a 0'
-  }
-
-  if (form.stock == null || form.stock < 0) {
-    errors.stock = 'El stock no puede ser negativo'
   }
 
   if (!form.description.trim()) {
@@ -182,7 +174,6 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
         formData.append('category', form.category)
         formData.append('description', form.description)
         formData.append('price', String(form.price))
-        formData.append('stock', String(form.stock))
         formData.append('image', imageFile)
         result = await productService.create(formData)
       } else {
@@ -191,7 +182,6 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
           category: form.category,
           price: form.price,
           description: form.description,
-          stock: form.stock,
         })
       }
 
@@ -304,24 +294,7 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
               <small className="p-error block mt-1" role="alert">{errors.price}</small>
             )}
           </div>
-          <div className="col-12 md:col-6 flex flex-column gap-2">
-            <label className="text-xs font-bold text-primary uppercase" htmlFor="product-stock">
-              Stock <span className="text-red-500">*</span>
-            </label>
-            <InputNumber
-              inputId="product-stock"
-              inputClassName={classNames('w-full', { 'p-invalid': errors.stock })}
-              placeholder="0"
-              value={form.stock}
-              onValueChange={(e) => handleChange('stock', e.value ?? 0)}
-              mode="decimal"
-              locale="es-CO"
-              min={0}
-            />
-            {errors.stock && (
-              <small className="p-error block mt-1" role="alert">{errors.stock}</small>
-            )}
-          </div>
+
         </div>
 
         {/* ── Description ────────────────────────────────────────────────── */}

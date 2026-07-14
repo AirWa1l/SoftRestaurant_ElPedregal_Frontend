@@ -10,6 +10,7 @@ import { NewOrderPage } from './pages/NewOrderPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { EditOrderPage } from './pages/EditOrderPage'
 import { SalesPage } from './pages/SalesPage'
+import { WhatsAppButton } from './components/layout/WhatsAppButton'
 import './App.css'
 
 import { PrimeReactProvider } from 'primereact/api';
@@ -21,8 +22,9 @@ function App() {
     <PrimeReactProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<ProductsPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/home" element={<DashboardHomePage />} />
-          <Route path="/" element={<LoginPage />} />
           <Route path="/edit-profile" element={<EditProfilePage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/create" element={<ProductCreatePage />} />
@@ -33,6 +35,7 @@ function App() {
           <Route path="/orders/:number/edit" element={<EditOrderPage />} />
           <Route path="/sales" element={<SalesPage />} />
         </Routes>
+        <WhatsAppButton />
       </BrowserRouter>
     </PrimeReactProvider>
   )

@@ -79,12 +79,6 @@ export function CustomerNavbar({ cartCount = 0 }: Props) {
             >
               Mis pedidos
             </Link>
-            <Link
-              to="/edit-profile"
-              className={`customer-nav__link no-underline ${isLinkActive('/edit-profile') ? 'active' : ''}`}
-            >
-              Mi cuenta
-            </Link>
           </nav>
         </div>
 

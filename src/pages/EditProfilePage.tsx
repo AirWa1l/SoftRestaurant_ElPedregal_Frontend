@@ -9,7 +9,11 @@ import type { CurrentUser, ProfileFormData, ProfileFormErrors } from '../types/p
 import { useNavigate } from 'react-router-dom'
 import { DashboardSidebarHeader } from '../components/layout/DashboardSidebarHeader'
 import { DashboardSidebarFooter } from '../components/layout/DashboardSidebarFooter'
+import { CustomerNavbar } from '../components/layout/CustomerNavbar'
 import { DeleteAccountDialog } from '../components/profile/DeleteAccountDialog'
+import { ChangePasswordDialog } from '../components/profile/ChangePasswordDialog'
+import { orderService } from '../services/orderService'
+import type { Order } from '../types/order'
 
 const INITIAL_FORM: ProfileFormData = {
   firstName: '',
@@ -40,6 +44,7 @@ export function EditProfilePage() {
   const [form, setForm] = useState<ProfileFormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<ProfileFormErrors>({})
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
 
   const toast = useRef<any>(null)
 
@@ -50,6 +55,7 @@ export function EditProfilePage() {
   const [isDeleteDialogVisible, setIsDeleteDialogVisible] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
+  const [isChangePasswordDialogVisible, setIsChangePasswordDialogVisible] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -59,9 +65,10 @@ export function EditProfilePage() {
       setApiError(null)
 
       try {
-        const [profileRes, userRes] = await Promise.all([
+        const [profileRes, userRes, ordersRes] = await Promise.all([
           userService.getProfile(),
           userService.getCurrentUser(),
+          orderService.getAll(),
         ])
 
         if (!isMounted) return
@@ -74,6 +81,10 @@ export function EditProfilePage() {
 
         if (userRes.success && userRes.user) {
           setCurrentUser(userRes.user)
+        }
+
+        if (ordersRes.success) {
+          setOrders(ordersRes.orders)
         }
       } catch {
         if (isMounted) {
@@ -196,28 +207,85 @@ export function EditProfilePage() {
     return letters || '--'
   }, [fullName, currentUser?.initials])
 
-  return (
-    <div className="dashboard-shell edit-profile-shell">
-      <aside className="dashboard-sidebar">
-        <DashboardSidebarHeader />
-        <DashboardSidebarFooter
-          currentUser={currentUser}
-          onGoToEditProfile={() => navigate('/edit-profile')}
-        />
-      </aside>
+  const isCustomer = currentUser?.role === 'user'
 
-      <main className="edit-profile-main">
+
+
+  // Map order statuses to localized colors for mockup consistency
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'Preparación':
+      case 'Pendiente':
+      case 'Confirmado':
+        return { bg: '#fee2e2', color: '#9d174d', text: 'En preparación' }
+      case 'Facturado':
+      case 'Entregado':
+        return { bg: '#e8f5e9', color: '#2e7d32', text: 'Facturado' }
+      default:
+        return { bg: '#ffebee', color: '#c62828', text: 'Cancelado' }
+    }
+  }
+
+  return (
+    <div className={isCustomer ? 'customer-shell' : 'dashboard-shell edit-profile-shell'}>
+      {isCustomer ? (
+        <CustomerNavbar />
+      ) : (
+        <aside className="dashboard-sidebar">
+          <DashboardSidebarHeader userRole={currentUser?.role ?? 'user'} />
+          <DashboardSidebarFooter
+            currentUser={currentUser}
+            onGoToEditProfile={() => navigate('/edit-profile')}
+          />
+        </aside>
+      )}
+
+      <main className={isCustomer ? 'customer-main edit-profile-customer-main' : 'edit-profile-main'}>
         <Toast ref={toast} />
-        <div className="edit-profile-layout">
-          <section className="edit-profile-card">
-            <div className="edit-profile-card__header">
-              <div className="edit-profile-avatar">{initials}</div>
-              <div>
-                <h1 className="edit-profile-title">Editar perfil</h1>
-                <p className="edit-profile-subtitle">Actualiza tus datos personales.</p>
-                <p className="edit-profile-email">{form.email || currentUser?.email || 'Sin correo'}</p>
+
+        {isCustomer && (
+          <section className="customer-profile-hero mb-5">
+            <div className="customer-profile-hero__container flex align-items-center justify-content-between flex-wrap gap-4 p-5">
+              <div className="flex align-items-center gap-4">
+                <div className="customer-hero-avatar flex align-items-center justify-content-center text-3xl font-bold">
+                  {initials}
+                </div>
+                <div className="text-white">
+                  <h1 className="text-4xl font-bold m-0 mb-1">{fullName}</h1>
+                  <p className="opacity-80 m-0 mb-3">{form.email || currentUser?.email}</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="text-xs bg-white-alpha-20 px-3 py-1 border-round-2xl font-semibold">
+                      Cliente desde abril 2026
+                    </span>
+                    <span className="text-xs bg-white-alpha-20 px-3 py-1 border-round-2xl font-semibold">
+                      {orders.length} pedido{orders.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
               </div>
+              <Button
+                label="Editar perfil"
+                className="customer-hero-edit-btn border-round-3xl font-bold text-sm bg-white-alpha-20 text-white"
+                style={{ border: '1px solid rgba(255,255,255,0.4)' }}
+              />
             </div>
+          </section>
+        )}
+
+        <div className={isCustomer ? 'customer-profile-grid' : 'edit-profile-layout'}>
+          <section className={isCustomer ? 'customer-profile-card-left surface-card p-4 border-round-xl border-1 surface-border' : 'edit-profile-card'}>
+            {!isCustomer && (
+              <div className="edit-profile-card__header">
+                <div className="edit-profile-avatar">{initials}</div>
+                <div>
+                  <h1 className="edit-profile-title">Editar perfil</h1>
+                  <p className="edit-profile-subtitle">Actualiza tus datos personales.</p>
+                  <p className="edit-profile-email">{form.email || currentUser?.email || 'Sin correo'}</p>
+                </div>
+              </div>
+            )}
+
+            {isCustomer && <h3 className="text-xl font-bold text-900 m-0 mb-4">Mis datos</h3>}
 
             {isLoading ? (
               <div className="edit-profile-loading">
@@ -228,7 +296,7 @@ export function EditProfilePage() {
                 <div className="grid">
                   <div className="col-12 md:col-6 flex flex-column gap-2 mb-3">
                     <label className="edit-profile-label" htmlFor="profile-firstName">
-                      Nombre completo
+                      Nombre
                     </label>
                     <InputText
                       id="profile-firstName"
@@ -302,9 +370,22 @@ export function EditProfilePage() {
                   label={isSaving ? 'Guardando...' : 'Guardar cambios'}
                   loading={isSaving}
                   className="w-full border-round-xl font-bold edit-profile-save"
+                  style={{ background: isCustomer ? '#1e5d3b' : undefined, borderColor: isCustomer ? '#1e5d3b' : undefined }}
                 />
 
-                <div className="edit-profile-danger-actions">
+                <div className="flex gap-3 mt-4">
+                  <Button
+                    type="button"
+                    label="Cambiar Contraseña"
+                    icon="pi pi-lock"
+                    severity="secondary"
+                    outlined
+                    className="w-full border-round-xl"
+                    onClick={() => setIsChangePasswordDialogVisible(true)}
+                  />
+                </div>
+
+                <div className="edit-profile-danger-actions mt-3">
                   <Button
                     type="button"
                     label="Eliminar cuenta"
@@ -317,6 +398,45 @@ export function EditProfilePage() {
               </form>
             )}
           </section>
+
+          {isCustomer && (
+            <section className="customer-profile-card-right surface-card p-4 border-round-xl border-1 surface-border flex-1">
+              <h3 className="text-xl font-bold text-900 m-0 mb-4">Historial de pedidos</h3>
+              {orders.length === 0 ? (
+                <div className="text-center py-5 text-600">
+                  <span className="text-4xl block mb-2">📦</span>
+                  No has realizado pedidos todavía.
+                </div>
+              ) : (
+                <div className="flex flex-column gap-3">
+                  {orders.map((order) => {
+                    const statusStyle = getStatusStyle(order.status)
+                    return (
+                      <div key={order.number} className="border-round-xl border-1 surface-border p-3 flex justify-content-between align-items-center flex-wrap gap-2 hover:shadow-1 transition-all">
+                        <div className="flex flex-column gap-1">
+                          <span className="font-bold text-900 text-sm">
+                            #{order.number} — {order.table || 'Sin mesa'}
+                          </span>
+                          <span className="text-xs text-500 line-clamp-1 max-w-20rem">
+                            {order.products}
+                          </span>
+                          <span className="font-semibold text-primary text-sm mt-1">
+                            {order.total}
+                          </span>
+                        </div>
+                        <span
+                          className="text-xs font-bold px-3 py-1 border-round-2xl"
+                          style={{ backgroundColor: statusStyle.bg, color: statusStyle.color }}
+                        >
+                          {statusStyle.text}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </main>
 
@@ -326,6 +446,11 @@ export function EditProfilePage() {
         onConfirm={handleConfirmDeleteAccount}
         isProcessing={isDeleting}
         serverError={deleteAccountError}
+      />
+
+      <ChangePasswordDialog
+        visible={isChangePasswordDialogVisible}
+        onHide={() => setIsChangePasswordDialogVisible(false)}
       />
     </div>
   )

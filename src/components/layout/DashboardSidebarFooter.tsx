@@ -1,6 +1,7 @@
 import { Button } from 'primereact/button'
 import { LogoutButton } from './LogoutButton'
 import type { CurrentUser } from '../../types/profile'
+import { ROLE_LABELS } from '../../utils/roles'
 
 interface Props {
   currentUser: CurrentUser | null
@@ -10,7 +11,7 @@ interface Props {
 export function DashboardSidebarFooter({ currentUser, onGoToEditProfile }: Props) {
   const userInitials = currentUser?.initials ?? '--'
   const userName = currentUser?.name ?? 'Cargando usuario...'
-  const userRole = currentUser?.role ?? 'Sin rol'
+  const userRole = currentUser ? ROLE_LABELS[currentUser.role] : 'Sin rol'
 
   return (
     <footer className="dashboard-sidebar__footer" id="contacto">

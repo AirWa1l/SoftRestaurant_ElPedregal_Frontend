@@ -1,6 +1,8 @@
 import type { RegisterPayload, RegisterResponse } from '../types/register'
 import type { RecoveryPasswordPayload, RecoveryPasswordResponse } from '../types/recoveryPassword'
 import type { LoginPayload, LoginResponse } from '../types/login'
+import type { UserRole } from '../utils/roles'
+import { isUserRole } from '../utils/roles'
 import type {
   CurrentUserResponse,
   CurrentUser,
@@ -11,11 +13,49 @@ import type {
   ProfileFormErrors,
 } from '../types/profile'
 
-const API_BASE_URL = 'http://localhost:8000/api'
+const API_BASE_URL_RAW = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')
+const API_BASE_URL = API_BASE_URL_RAW.replace(/\/auth$/, '')
+const AUTH_API_BASE_URL = (import.meta.env.VITE_AUTH_API_BASE_URL || `${API_BASE_URL}/auth`).replace(/\/$/, '')
+const ACCESS_TOKEN_STORAGE_KEY = 'pedregal_access_token'
 
-// --- in-memory cache + pubsub for current user ---
+let cachedAccessToken: string | null = null
 let cachedCurrentUser: CurrentUser | null = null
 const currentUserListeners: Array<(u: CurrentUser | null) => void> = []
+
+function getStoredAccessToken() {
+  if (cachedAccessToken) return cachedAccessToken
+  if (typeof window === 'undefined') return null
+  cachedAccessToken = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)
+  return cachedAccessToken
+}
+
+function setStoredAccessToken(token: string | null) {
+  cachedAccessToken = token
+  if (typeof window !== 'undefined') {
+    if (token) {
+      window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token)
+    } else {
+      window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY)
+    }
+  }
+}
+
+function buildCurrentUser(user: {
+  firstName?: string
+  lastName?: string
+  email: string
+  role?: string
+}) {
+  const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Usuario'
+  const initials = `${(user.firstName?.[0] ?? '').toUpperCase()}${(user.lastName?.[0] ?? '').toUpperCase()}` || '--'
+  const role: UserRole = user.role && isUserRole(user.role) ? user.role : 'user'
+  return {
+    initials,
+    name,
+    role,
+    email: user.email,
+  }
+}
 
 function emitCurrentUser(u: CurrentUser | null) {
   cachedCurrentUser = u
@@ -36,96 +76,156 @@ function onCurrentUserChange(cb: (u: CurrentUser | null) => void) {
   }
 }
 
+async function requestJson<T>(path: string, options: { method?: string; body?: unknown } = {}) {
+  const headers: Record<string, string> = {}
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  const token = getStoredAccessToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${AUTH_API_BASE_URL}${path}`, {
+    method: options.method ?? 'GET',
+    headers,
+    credentials: 'include',
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+  })
+
+  const text = await response.text()
+  const data = text ? JSON.parse(text) : null
+
+  if (!response.ok) {
+    const message = data?.message || 'server_error'
+    throw new Error(message)
+  }
+
+  return data as T
+}
+
 export const userService = {
   async register(payload: RegisterPayload): Promise<RegisterResponse> {
-    await new Promise((resolve) => resolve(new Promise((r) => setTimeout(r, 1500))))
-
-    if (payload.email === 'existe@correo.com') {
+    try {
+      const result = await requestJson<{ id: string }>('/register', { method: 'POST', body: payload })
+      return {
+        success: true,
+        message: 'Usuario registrado exitosamente en El Pedregal.',
+        userId: result.id,
+      }
+    } catch (error) {
+      const message = (error as Error).message
       return {
         success: false,
-        message: 'Ya existe una cuenta registrada con este correo electrónico.',
+        message:
+          message === 'email_in_use'
+            ? 'Ya existe una cuenta registrada con este correo electrónico.'
+            : 'Ocurrió un error al registrar el usuario.',
       }
-    }
-
-    console.log(`[userService.register] Enviando a ${API_BASE_URL}/users/register`, payload)
-
-    return {
-      success: true,
-      message: 'Usuario registrado exitosamente en El Pedregal.',
-      userId: crypto.randomUUID(),
     }
   },
 
   async recoveryPassword(payload: RecoveryPasswordPayload): Promise<RecoveryPasswordResponse> {
-    await new Promise((resolve) => resolve(new Promise((r) => setTimeout(r, 1500))))
-
-    if (payload.email === 'noexiste@correo.com') {
+    try {
+      await requestJson('/forgot-password', { method: 'POST', body: { email: payload.email } })
+      return {
+        success: true,
+        message: 'Se envió un enlace de recuperación al correo. Revisa tu bandeja de entrada.',
+      }
+    } catch (error) {
+      const message = (error as Error).message
       return {
         success: false,
-        message: 'No existe una cuenta registrada con este correo electrónico.',
+        message:
+          message === 'user_not_found'
+            ? 'No existe una cuenta registrada con este correo electrónico.'
+            : 'Ocurrió un error al procesar tu solicitud.',
       }
     }
+  },
 
-    console.log(`[userService.recoveryPassword] Enviando a ${API_BASE_URL}/users/recovery-password`, payload)
-
-    return {
-      success: true,
-      message: 'Contraseña recuperada exitosamente en El Pedregal.',
-      userId: crypto.randomUUID(),
+  async resetPassword(payload: { token: string; password: string }): Promise<RecoveryPasswordResponse> {
+    try {
+      await requestJson('/reset-password', { method: 'POST', body: payload })
+      return {
+        success: true,
+        message: 'Contraseña actualizada correctamente. Inicia sesión con tu nueva contraseña.',
+      }
+    } catch (error) {
+      const message = (error as Error).message
+      return {
+        success: false,
+        message:
+          message === 'invalid_or_expired_token'
+            ? 'El enlace de recuperación es inválido o ha expirado.'
+            : 'No fue posible actualizar la contraseña.',
+      }
     }
   },
 
   async login(payload: LoginPayload): Promise<LoginResponse> {
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    if (payload.email === 'noexiste@correo.com') {
+    try {
+      const result = await requestJson<{ accessToken: string }>('/login', { method: 'POST', body: payload })
+      setStoredAccessToken(result.accessToken)
+      const currentUserResponse = await this.getCurrentUser()
+      if (currentUserResponse.success && currentUserResponse.user) {
+        emitCurrentUser(currentUserResponse.user)
+      }
+      return {
+        success: true,
+        message: 'Inicio de sesión exitoso en El Pedregal.',
+      }
+    } catch (error) {
+      setStoredAccessToken(null)
+      const message = (error as Error).message
       return {
         success: false,
-        message: 'No existe una cuenta con ese correo electrónico.',
+        message:
+          message === 'invalid_credentials'
+            ? 'Correo o contraseña incorrectos.'
+            : 'Ocurrió un error al iniciar sesión.',
       }
     }
+  },
 
-    if (payload.password !== '12345678') {
-      return {
-        success: false,
-        message: 'Contraseña incorrecta.',
+  async logout(): Promise<void> {
+    try {
+      await requestJson<void>('/logout', { method: 'POST' })
+    } catch {
+      // Ignore network errors during logout
+    } finally {
+      setStoredAccessToken(null)
+      emitCurrentUser(null)
+      // Limpia el espejo de pedidos para que el siguiente usuario no vea los del anterior.
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('pedregal_orders')
+        window.sessionStorage.removeItem('pedregal_guest_orders')
       }
-    }
-
-    console.log(`[userService.login] Enviando a ${API_BASE_URL}/users/login`, payload)
-
-    return {
-      success: true,
-      message: 'Inicio de sesión exitoso en El Pedregal.',
-      userId: crypto.randomUUID(),
     }
   },
 
   async getProfile(): Promise<ProfileResponse> {
-    await new Promise((resolve) => setTimeout(resolve, 900))
-
-    const profile: ProfileFormData = {
-      firstName: 'Carlos',
-      lastName: 'Rodriguez',
-      email: 'carlos.rodriguez@email.com',
-      phone: '+57 300 000 0000',
-    }
-
-    console.log(`[userService.getProfile] Obteniendo desde ${API_BASE_URL}/users/profile`)
-
-    return {
-      success: true,
-      message: 'Perfil cargado exitosamente.',
-      profile,
+    try {
+      const result = await requestJson<{ message: string; profile: ProfileFormData }>('/users/profile')
+      return {
+        success: true,
+        message: result.message,
+        profile: result.profile,
+      }
+    } catch (error) {
+      const message = (error as Error).message
+      return {
+        success: false,
+        message:
+          message === 'unauthorized'
+            ? 'Debe iniciar sesión de nuevo.'
+            : 'No fue posible cargar el perfil.',
+      }
     }
   },
 
   async getCurrentUser(): Promise<CurrentUserResponse> {
-    // If we have a cached user, return it quickly
-    await new Promise((resolve) => setTimeout(resolve, 200))
-
-    console.log(`[userService.getCurrentUser] Obteniendo desde ${API_BASE_URL}/users/current`)
-
     if (cachedCurrentUser) {
       return {
         success: true,
@@ -134,88 +234,89 @@ export const userService = {
       }
     }
 
-    // Default simulated response
-    return {
-      success: true,
-      message: 'Usuario actual cargado exitosamente.',
-      user: {
-        initials: 'CR',
-        name: 'Carlos Rodriguez',
-        role: 'Cajero',
-        email: 'carlos.rodriguez@email.com',
-      },
+    try {
+      const result = await requestJson<{ message: string; user: CurrentUser }>('/users/current')
+      if (result.user) {
+        emitCurrentUser(result.user)
+      }
+      return {
+        success: true,
+        message: result.message,
+        user: result.user,
+      }
+    } catch (error) {
+      const message = (error as Error).message
+      if (message === 'unauthorized') {
+        setStoredAccessToken(null)
+        emitCurrentUser(null)
+      }
+      return {
+        success: false,
+        message: 'No fue posible cargar el usuario actual.',
+      }
     }
   },
 
   async updateProfile(payload: ProfileFormData): Promise<ProfileResponse> {
-    console.log(`[userService.updateProfile] Enviando a ${API_BASE_URL}/users/profile`, payload)
+    try {
+      const result = await requestJson<{ message: string; profile: ProfileFormData }>('/users/profile', {
+        method: 'PUT',
+        body: payload,
+      })
 
-    // Simulate network latency and simple server-side validation
-    await new Promise((resolve) => setTimeout(resolve, 900))
+      const updatedUser = buildCurrentUser({
+        ...result.profile,
+        role: cachedCurrentUser?.role,
+      })
+      emitCurrentUser(updatedUser)
 
-    // Simulated server-side validation error example
-    if (payload.email === 'exists@server.com') {
-      const errors: ProfileFormErrors = { email: 'Este correo ya está en uso.' }
+      return {
+        success: true,
+        message: result.message || 'Perfil actualizado correctamente.',
+        profile: result.profile,
+      }
+    } catch (error) {
+      const message = (error as Error).message
+      const responseErrors: ProfileFormErrors = {}
+
+      if (message === 'email_in_use') {
+        responseErrors.email = 'Este correo ya está en uso.'
+      }
+
       return {
         success: false,
-        message: 'Error de validación en el servidor.',
-        errors,
+        message: message === 'unauthorized' ? 'Debe iniciar sesión de nuevo.' : 'No fue posible guardar los cambios.',
+        errors: responseErrors,
       }
-    }
-
-    if (payload.email === 'invalid@server.com') {
-      return {
-        success: false,
-        message: 'El correo proporcionado no es permitido por el servidor.',
-      }
-    }
-
-    const updatedProfile: ProfileFormData = { ...payload }
-
-    // Update cached current user (simple mapping: name = first + last, initials)
-    const updatedUser: CurrentUser = {
-      initials: `${(payload.firstName[0] ?? '').toUpperCase()}${(payload.lastName[0] ?? '').toUpperCase()}` || '??',
-      name: `${payload.firstName} ${payload.lastName}`.trim() || 'Usuario',
-      role: cachedCurrentUser?.role ?? 'Cajero',
-      email: payload.email,
-    }
-
-    emitCurrentUser(updatedUser)
-
-    return {
-      success: true,
-      message: 'Perfil actualizado en servidor (simulado).',
-      profile: updatedProfile,
     }
   },
 
   async deleteAccount(payload: DeleteAccountPayload): Promise<DeleteAccountResponse> {
-    console.log(`[userService.deleteAccount] Enviando a ${API_BASE_URL}/users/delete-account`)
+    try {
+      await requestJson<{ message: string }>('/users/delete-account', {
+        method: 'POST',
+        body: payload,
+      })
+      setStoredAccessToken(null)
+      emitCurrentUser(null)
 
-    await new Promise((resolve) => setTimeout(resolve, 900))
-
-    if (!cachedCurrentUser) {
+      return {
+        success: true,
+        message: 'Cuenta eliminada correctamente.',
+      }
+    } catch (error) {
+      const message = (error as Error).message
       return {
         success: false,
-        message: 'No hay una sesión activa para eliminar.',
+        message:
+          message === 'invalid_credentials'
+            ? 'La contraseña no coincide.'
+            : message === 'unauthorized'
+            ? 'Debe iniciar sesión de nuevo.'
+            : 'No fue posible eliminar la cuenta. Intenta de nuevo.',
       }
-    }
-
-    if (payload.password !== '12345678') {
-      return {
-        success: false,
-        message: 'La contraseña no coincide.',
-      }
-    }
-
-    emitCurrentUser(null)
-
-    return {
-      success: true,
-      message: 'Cuenta eliminada correctamente (simulado).',
     }
   },
 
-  // expose subscription helper
   onCurrentUserChange,
 }

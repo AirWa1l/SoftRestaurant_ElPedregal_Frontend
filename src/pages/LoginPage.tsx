@@ -7,7 +7,6 @@ import { TabView, TabPanel } from 'primereact/tabview';
 
 export function LoginPage() {
   const [outerTab, setOuterTab] = useState(0)
-  const [innerTab, setInnerTab] = useState(0)
   return (
     <div className="w-full">
       <main className="min-h-screen flex flex-column md:flex-row">

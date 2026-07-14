@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from 'primereact/button'
+import { userService } from '../../services/userService'
 
 export function LogoutButton() {
   const navigate = useNavigate()
 
-  function handleLogout() {
-    navigate('/')
+  async function handleLogout() {
+    await userService.logout()
+    navigate('/login')
   }
 
   return (

@@ -27,6 +27,10 @@ type DashboardRecentOrder = {
 export const siteContent = {
   brand: 'El Pedregal',
   tagline: 'SoftRestaurant',
+  whatsapp: {
+    phone: '', // Modificar por el número del Pedregal
+    defaultMessage: 'Hola, quiero hacer un pedido en El Pedregal',
+  },
   dashboardUser: {
     initials: 'MC',
     name: 'María Cajero',
@@ -34,10 +38,11 @@ export const siteContent = {
   },
   navigation: [
     { label: 'Dashboard', href: '/home' },
-    { label: 'Pedidos', href: '/home' },
-    { label: 'Productos', href: '/home' },
-    { label: 'Usuarios', href: '/home' },
-    { label: 'Configuración', href: '/home' },
+    { label: 'Pedidos', href: '/orders' },
+    { label: 'Productos', href: '/products', roles: ['admin', 'employee', 'user'] },
+    { label: 'Usuarios', href: '/home', roles: ['admin'] },
+    { label: 'Configuración', href: '/home', roles: ['admin'] },
+    { label: 'Ventas', href: '/sales', roles: ['admin', 'employee'] }
   ] satisfies NavigationLink[],
   hero: {
     eyebrow: 'Dashboard',

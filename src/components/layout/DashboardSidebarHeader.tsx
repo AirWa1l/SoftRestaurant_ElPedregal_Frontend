@@ -1,7 +1,16 @@
 import { Link } from 'react-router-dom'
 import { siteContent } from '../../data/siteContent'
+import type { UserRole } from '../../utils/roles'
 
-export function DashboardSidebarHeader() {
+type Props = {
+  userRole: UserRole
+}
+
+export function DashboardSidebarHeader({ userRole }: Props) {
+  const visibleLinks = siteContent.navigation.filter(
+    (link) => !link.roles || link.roles.includes(userRole as UserRole)
+  )
+
   return (
     <header className="dashboard-sidebar__header">
       <Link className="dashboard-brand" to="/home" aria-label={siteContent.brand}>
@@ -10,10 +19,10 @@ export function DashboardSidebarHeader() {
       </Link>
 
       <nav className="dashboard-nav" aria-label="Navegación principal">
-        {siteContent.navigation.map((link) => (
-          <a key={link.label} href={link.href} className="dashboard-nav__link">
+        {visibleLinks.map((link) => (
+          <Link key={link.label} to={link.href} className="dashboard-nav__link">
             {link.label}
-          </a>
+          </Link>
         ))}
       </nav>
     </header>

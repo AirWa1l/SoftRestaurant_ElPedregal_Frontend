@@ -69,14 +69,23 @@ export function OrdersPage() {
   const isStaff = currentUser ? canManageOrders(currentUser.role) : false
 
   async function moveStatus(orderNumber: string, nextStatus: OrderStatusFrontend) {
-    await orderService.updateStatus(orderNumber, nextStatus)
+    const result = await orderService.updateStatus(orderNumber, nextStatus)
     await loadOrders()
-    toast.current?.show({
-      severity: 'success',
-      summary: 'Estado Actualizado',
-      detail: `El pedido #${orderNumber} se movió a: ${nextStatus}`,
-      life: 2000,
-    })
+    if (result.success) {
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Estado Actualizado',
+        detail: `El pedido #${orderNumber} se movió a: ${nextStatus}`,
+        life: 2000,
+      })
+    } else {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'No se pudo actualizar',
+        detail: result.message,
+        life: 3500,
+      })
+    }
   }
 
   function handleCancelClick(order: Order) {
@@ -104,18 +113,29 @@ export function OrdersPage() {
       }
     }
 
-    await orderService.remove(orderToCancel.number)
+    const result = await orderService.remove(orderToCancel.number)
     await loadOrders()
 
     setIsCancelling(false)
     setCancelDialogVisible(false)
+    const cancelledNumber = orderToCancel.number
     setOrderToCancel(null)
-    toast.current?.show({
-      severity: 'warn',
-      summary: 'Pedido Cancelado',
-      detail: `El pedido #${orderToCancel.number} fue cancelado. Motivo: ${reason}`,
-      life: 3000,
-    })
+
+    if (result.success) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Pedido Cancelado',
+        detail: `El pedido #${cancelledNumber} fue cancelado. Motivo: ${reason}`,
+        life: 3000,
+      })
+    } else {
+      toast.current?.show({
+        severity: 'error',
+        summary: 'No se pudo cancelar',
+        detail: result.message,
+        life: 3500,
+      })
+    }
   }
 
   async function handleClearBilled() {
@@ -125,7 +145,8 @@ export function OrdersPage() {
     setOrders((prev) => prev.filter((o) => o.status !== 'Facturado'))
   }
 
-  const isCustomer = currentUser?.role === 'user'
+  // Un invitado (sin sesión) también se trata como cliente.
+  const isCustomer = !currentUser || currentUser.role === 'user'
 
   return (
     <div className={isCustomer ? 'customer-shell' : 'dashboard-shell'}>

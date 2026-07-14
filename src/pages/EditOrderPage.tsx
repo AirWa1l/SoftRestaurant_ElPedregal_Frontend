@@ -356,7 +356,8 @@ export function EditOrderPage() {
     }
   }
 
-  const isCustomer = currentUser?.role === 'user'
+  // Un invitado (sin sesión) también se trata como cliente.
+  const isCustomer = !currentUser || currentUser.role === 'user'
 
   return (
     <div className={isCustomer ? 'customer-shell' : 'dashboard-shell'}>

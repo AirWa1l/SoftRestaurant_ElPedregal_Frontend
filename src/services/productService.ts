@@ -6,8 +6,17 @@ import type {
 } from '../types/product'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api').replace(/\/$/, '')
-const API_HOST = API_BASE_URL.replace(/\/api$/, '')
 const ACCESS_TOKEN_STORAGE_KEY = 'pedregal_access_token'
+
+function getApiHost(baseUrl: string = API_BASE_URL): string {
+  try {
+    return new URL(baseUrl).origin
+  } catch {
+    return baseUrl.replace(/\/api(?:\/.*)?$/, '')
+  }
+}
+
+const API_HOST = getApiHost()
 
 // ─── Token helper (shared pattern with userService) ───────────────────────────
 
@@ -61,10 +70,11 @@ async function requestJson<T>(path: string, options: { method?: string; body?: u
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function resolveImageUrl(path?: string): string | undefined {
+/** Resuelve rutas relativas de imagen (/uploads/...) a URL absoluta del API. */
+export function resolveImageUrl(path?: string, apiHost: string = API_HOST): string | undefined {
   if (!path) return undefined
   if (path.startsWith('http') || path.startsWith('blob:')) return path
-  return `${API_HOST}${path.startsWith('/') ? path : `/${path}`}`
+  return `${apiHost}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 function mapApiErrorMessage(message: string, fallback: string): string {
@@ -100,15 +110,6 @@ function parsePrice(value: unknown): number | null {
 }
 
 
-function parseStock(value: unknown): number {
-  if (typeof value === 'number') return value
-  if (typeof value === 'string') {
-    const parsed = Number(value)
-    return Number.isNaN(parsed) ? 0 : parsed
-  }
-  return 0
-}
-
 function mapProductFromApi(apiProduct: any): Product {
   return {
     id: apiProduct._id || apiProduct.id,
@@ -119,7 +120,6 @@ function mapProductFromApi(apiProduct: any): Product {
     description: apiProduct.description,
     imageUrl: resolveImageUrl(apiProduct.image ?? apiProduct.imageUrl),
     isAvailable: apiProduct.isAvailable ?? true,
-    stock: parseStock(apiProduct.stock),
   }
 }
 

@@ -85,22 +85,6 @@ export function DashboardHomePage() {
   }
 
   async function handleRemoveOrder(orderNumber: string) {
-    const targetOrder = orders.find((o) => o.number === orderNumber)
-    if (targetOrder && targetOrder.items) {
-      const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
-      if (cachedAdjustments) {
-        try {
-          const adjustments = JSON.parse(cachedAdjustments)
-          targetOrder.items.forEach((item: { productId: string; quantity: number }) => {
-            if (adjustments[item.productId] !== undefined) {
-              adjustments[item.productId] = Math.max(0, adjustments[item.productId] - item.quantity)
-            }
-          })
-          window.localStorage.setItem('pedregal_stock_adjustments', JSON.stringify(adjustments))
-        } catch {}
-      }
-    }
-
     await orderService.remove(orderNumber)
     const response = await orderService.getAll()
     if (response.success) {

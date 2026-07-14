@@ -70,9 +70,6 @@ export function EditOrderPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Order Original state (to calculate stock difference)
-  const [originalItemsMap, setOriginalItemsMap] = useState<Record<string, number>>({})
-
   // Order Details (Editable)
   const [customerName, setCustomerName] = useState('')
   const [notes, setNotes] = useState('')
@@ -128,7 +125,6 @@ export function EditOrderPage() {
         setNotes(orderToEdit.notes || '')
 
         // 4. Map original items
-        const origMap: Record<string, number> = {}
         const initialCart: Record<string, CartItem> = {}
 
         const itemsList = orderToEdit.items || []
@@ -143,7 +139,6 @@ export function EditOrderPage() {
               const qty = parseInt(match[2], 10)
               const matchedProd = fetchedProducts.find((p) => p.name.toLowerCase() === name.toLowerCase())
               if (matchedProd) {
-                origMap[matchedProd.id] = qty
                 initialCart[matchedProd.id] = {
                   product: matchedProd,
                   quantity: qty,
@@ -155,7 +150,6 @@ export function EditOrderPage() {
           itemsList.forEach((item: { productId: string; quantity: number }) => {
             const prod = fetchedProducts.find((p) => p.id === item.productId)
             if (prod) {
-              origMap[item.productId] = item.quantity
               initialCart[item.productId] = {
                 product: prod,
                 quantity: item.quantity,
@@ -164,29 +158,7 @@ export function EditOrderPage() {
           })
         }
 
-        setOriginalItemsMap(origMap)
-
-        // 5. Load adjustments and set adjusted products stock
-        let adjustments: Record<string, number> = {}
-        const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
-        if (cachedAdjustments) {
-          try {
-            adjustments = JSON.parse(cachedAdjustments)
-          } catch {}
-        }
-
-        const adjustedProducts = fetchedProducts.map((p) => {
-          const origQty = origMap[p.id] || 0
-          const adj = adjustments[p.id] || 0
-          // Stock available for this order is current stock plus what this order originally reserved
-          const adjustedStock = p.stock - adj + origQty
-          return {
-            ...p,
-            stock: Math.max(0, adjustedStock),
-          }
-        })
-
-        setProducts(adjustedProducts)
+        setProducts(fetchedProducts)
         setCart(initialCart)
 
       } catch (err) {
@@ -226,15 +198,6 @@ export function EditOrderPage() {
     setCart((prev) => {
       const existing = prev[product.id]
       const currentQty = existing ? existing.quantity : 0
-      if (currentQty >= product.stock) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Stock límite',
-          detail: `Solo hay ${product.stock} unidades de ${product.name} en stock para este pedido.`,
-          life: 2500,
-        })
-        return prev
-      }
 
       return {
         ...prev,
@@ -304,25 +267,6 @@ export function EditOrderPage() {
         name: item.product.name,
       }))
 
-      // 1. Calculate stock difference and update local adjustments
-      const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
-      let adjustments: Record<string, number> = {}
-      if (cachedAdjustments) {
-        try { adjustments = JSON.parse(cachedAdjustments) } catch {}
-      }
-      // Refund all original items first
-      Object.entries(originalItemsMap).forEach(([prodId, origQty]) => {
-        if (adjustments[prodId] !== undefined) {
-          adjustments[prodId] = Math.max(0, adjustments[prodId] - origQty)
-        }
-      })
-      // Apply new cart items adjustments
-      Object.values(cart).forEach((item) => {
-        adjustments[item.product.id] = (adjustments[item.product.id] || 0) + item.quantity
-      })
-      window.localStorage.setItem('pedregal_stock_adjustments', JSON.stringify(adjustments))
-
-      // 2. Update order via service
       const response = await orderService.updateItems(number!, {
         items,
         table: customerName.trim(),
@@ -532,7 +476,6 @@ export function EditOrderPage() {
                               <span className="font-bold text-sm text-900">
                                 {(prod.price || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
                               </span>
-                              <span className="text-xs text-500 font-semibold">Stock: {prod.stock}</span>
                             </div>
                           </div>
                         </div>
@@ -645,7 +588,7 @@ export function EditOrderPage() {
                                   className="p-0 text-700 font-bold"
                                   style={{ width: '20px', height: '20px', minWidth: '20px', fontSize: '0.7rem' }}
                                   onClick={(e) => { e.stopPropagation(); handleAddToCart(item.product) }}
-                                  disabled={isSubmitting || item.quantity >= item.product.stock}
+                                  disabled={isSubmitting}
                                   type="button"
                                 />
                                 <Button

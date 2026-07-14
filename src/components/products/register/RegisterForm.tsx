@@ -18,7 +18,6 @@ type ProductFormValues = {
   description: string
   imageUrl: string
   isAvailable: boolean
-  stock: number
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -30,7 +29,6 @@ const INITIAL_FORM: ProductFormValues = {
   description: '',
   imageUrl: '',
   isAvailable: true,
-  stock: 0,
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -55,10 +53,6 @@ function validate(
     errors.price = 'El precio es obligatorio'
   } else if (form.price <= 0) {
     errors.price = 'El precio debe ser mayor a 0'
-  }
-
-  if (form.stock == null || form.stock < 0) {
-    errors.stock = 'El stock no puede ser negativo'
   }
 
   if (!form.description.trim()) {
@@ -182,17 +176,20 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
         formData.append('category', form.category)
         formData.append('description', form.description)
         formData.append('price', String(form.price))
-        formData.append('stock', String(form.stock))
         formData.append('image', imageFile)
         result = await productService.create(formData)
       } else {
-        result = await productService.create({
+        const payload: Partial<Product> = {
           name: form.name,
           category: form.category,
           price: form.price,
           description: form.description,
-          stock: form.stock,
-        })
+        }
+        const externalUrl = form.imageUrl.trim()
+        if (externalUrl && !externalUrl.startsWith('blob:')) {
+          payload.imageUrl = externalUrl
+        }
+        result = await productService.create(payload)
       }
 
       if (!result.success) {
@@ -284,44 +281,24 @@ export function ProductForm({ onSuccess, onCancel }: Props) {
         </div>
 
         {/* ── Price ──────────────────────────────────────────────── */}
-        <div className="grid grid-nogutter gap-3 mb-3">
-          <div className="col-12 md:col-6 flex flex-column gap-2">
-            <label className="text-xs font-bold text-primary uppercase" htmlFor="product-price">
-              Precio (COP) <span className="text-red-500">*</span>
-            </label>
-            <InputNumber
-              inputId="product-price"
-              inputClassName={classNames('w-full', { 'p-invalid': errors.price })}
-              placeholder="0"
-              value={form.price}
-              onValueChange={(e) => handleChange('price', e.value ?? null)}
-              mode="currency"
-              currency="COP"
-              locale="es-CO"
-              min={0}
-            />
-            {errors.price && (
-              <small className="p-error block mt-1" role="alert">{errors.price}</small>
-            )}
-          </div>
-          <div className="col-12 md:col-6 flex flex-column gap-2">
-            <label className="text-xs font-bold text-primary uppercase" htmlFor="product-stock">
-              Stock <span className="text-red-500">*</span>
-            </label>
-            <InputNumber
-              inputId="product-stock"
-              inputClassName={classNames('w-full', { 'p-invalid': errors.stock })}
-              placeholder="0"
-              value={form.stock}
-              onValueChange={(e) => handleChange('stock', e.value ?? 0)}
-              mode="decimal"
-              locale="es-CO"
-              min={0}
-            />
-            {errors.stock && (
-              <small className="p-error block mt-1" role="alert">{errors.stock}</small>
-            )}
-          </div>
+        <div className="flex flex-column gap-2 mb-3">
+          <label className="text-xs font-bold text-primary uppercase" htmlFor="product-price">
+            Precio (COP) <span className="text-red-500">*</span>
+          </label>
+          <InputNumber
+            inputId="product-price"
+            inputClassName={classNames('w-full', { 'p-invalid': errors.price })}
+            placeholder="0"
+            value={form.price}
+            onValueChange={(e) => handleChange('price', e.value ?? null)}
+            mode="currency"
+            currency="COP"
+            locale="es-CO"
+            min={0}
+          />
+          {errors.price && (
+            <small className="p-error block mt-1" role="alert">{errors.price}</small>
+          )}
         </div>
 
         {/* ── Description ────────────────────────────────────────────────── */}

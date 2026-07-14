@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { InputText } from 'primereact/inputtext'
 import { InputTextarea } from 'primereact/inputtextarea'
-import { InputNumber } from 'primereact/inputnumber'
 import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
 import { Message } from 'primereact/message'
@@ -24,10 +23,6 @@ function validate(form: Product): ProductFormErrors {
 
   if (!form.category) {
     errors.category = 'Selecciona una categoría'
-  }
-
-  if (form.stock == null || form.stock < 0) {
-    errors.stock = 'El stock no puede ser negativo'
   }
 
   if (!form.description?.trim()) {
@@ -127,7 +122,6 @@ export function ProductEditForm({ productId, onSuccess, onCancel }: Props) {
         formData.append('category', form.category)
         formData.append('description', form.description ?? '')
         formData.append('isAvailable', String(form.isAvailable))
-        formData.append('stock', String(form.stock))
         formData.append('image', imageFile)
         result = await productService.update(productId, formData)
       } else {
@@ -136,7 +130,10 @@ export function ProductEditForm({ productId, onSuccess, onCancel }: Props) {
           category: form.category,
           description: form.description,
           isAvailable: form.isAvailable,
-          stock: form.stock,
+        }
+        const externalUrl = form.imageUrl?.trim()
+        if (externalUrl && /^https?:\/\//i.test(externalUrl)) {
+          payload.imageUrl = externalUrl
         }
         result = await productService.update(productId, payload)
       }
@@ -213,38 +210,20 @@ export function ProductEditForm({ productId, onSuccess, onCancel }: Props) {
           {errors.category && <small className="p-error block mt-1" role="alert">{errors.category}</small>}
         </div>
 
-        <div className="grid grid-nogutter gap-3 mb-3">
-          <div className="col-12 md:col-6 flex flex-column gap-2">
-            <label className="text-xs font-bold text-primary uppercase">
-              Precio (COP)
-            </label>
-            <InputText
-              value={
-                form.price != null
-                  ? form.price.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
-                  : ''
-              }
-              disabled
-              className="surface-100"
-            />
-            <small className="text-500 text-xs">El precio es inmutable tras la creación del producto.</small>
-          </div>
-          <div className="col-12 md:col-6 flex flex-column gap-2">
-            <label className="text-xs font-bold text-primary uppercase" htmlFor="edit-product-stock">
-              Stock <span className="text-red-500">*</span>
-            </label>
-            <InputNumber
-              inputId="edit-product-stock"
-              inputClassName={classNames('w-full', { 'p-invalid': errors.stock })}
-              placeholder="0"
-              value={form.stock}
-              onValueChange={(e) => handleChange('stock', e.value ?? 0)}
-              mode="decimal"
-              locale="es-CO"
-              min={0}
-            />
-            {errors.stock && <small className="p-error block mt-1" role="alert">{errors.stock}</small>}
-          </div>
+        <div className="flex flex-column gap-2 mb-3">
+          <label className="text-xs font-bold text-primary uppercase">
+            Precio (COP)
+          </label>
+          <InputText
+            value={
+              form.price != null
+                ? form.price.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
+                : ''
+            }
+            disabled
+            className="surface-100"
+          />
+          <small className="text-500 text-xs">El precio es inmutable tras la creación del producto.</small>
         </div>
 
         <div className="flex flex-column gap-2 mb-3">

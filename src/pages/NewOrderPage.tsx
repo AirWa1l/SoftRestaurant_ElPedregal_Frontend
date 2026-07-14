@@ -113,23 +113,9 @@ export function NewOrderPage() {
             setCategories(categoriesRes.categories)
           }
 
-          let adjustments: Record<string, number> = {}
-          const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
-          if (cachedAdjustments) {
-            try {
-              adjustments = JSON.parse(cachedAdjustments)
-            } catch {}
-          }
-
           let loadedProducts: Product[] = []
           if (productsRes.success) {
-            loadedProducts = (productsRes.products || []).map((p) => {
-              const adj = adjustments[p.id] || 0
-              return {
-                ...p,
-                stock: Math.max(0, p.stock - adj),
-              }
-            })
+            loadedProducts = productsRes.products || []
             setProducts(loadedProducts)
           }
 
@@ -141,10 +127,10 @@ export function NewOrderPage() {
               const initialCart: Record<string, CartItem> = {}
               Object.entries(parsedCart).forEach(([prodId, qty]) => {
                 const prod = loadedProducts.find((p) => p.id === prodId)
-                if (prod && prod.isAvailable && prod.stock > 0) {
+                if (prod && prod.isAvailable) {
                   initialCart[prodId] = {
                     product: prod,
-                    quantity: Math.min(qty, prod.stock),
+                    quantity: qty,
                   }
                 }
               })
@@ -196,15 +182,6 @@ export function NewOrderPage() {
     setCart((prev) => {
       const existing = prev[product.id]
       const currentQty = existing ? existing.quantity : 0
-      if (currentQty >= product.stock) {
-        toast.current?.show({
-          severity: 'warn',
-          summary: 'Stock límite',
-          detail: `Solo hay ${product.stock} unidades de ${product.name} en stock.`,
-          life: 2500,
-        })
-        return prev
-      }
 
       const nextCart = {
         ...prev,
@@ -306,17 +283,6 @@ export function NewOrderPage() {
       if (!response.success) {
         throw new Error(response.message || 'Error al crear el pedido')
       }
-
-      // Save local stock adjustments
-      const cachedAdjustments = window.localStorage.getItem('pedregal_stock_adjustments')
-      let adjustments: Record<string, number> = {}
-      if (cachedAdjustments) {
-        try { adjustments = JSON.parse(cachedAdjustments) } catch {}
-      }
-      Object.values(cart).forEach((item) => {
-        adjustments[item.product.id] = (adjustments[item.product.id] || 0) + item.quantity
-      })
-      window.localStorage.setItem('pedregal_stock_adjustments', JSON.stringify(adjustments))
 
       // Clear catalog cart
       window.localStorage.removeItem('pedregal_cart')
@@ -505,7 +471,6 @@ export function NewOrderPage() {
                               <span className="font-bold text-sm text-900">
                                 {(prod.price || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
                               </span>
-                              <span className="text-xs text-500 font-semibold">Stock: {prod.stock}</span>
                             </div>
                           </div>
                         </div>
@@ -636,7 +601,7 @@ export function NewOrderPage() {
                                   className="p-0 text-700 font-bold"
                                   style={{ width: '20px', height: '20px', minWidth: '20px', fontSize: '0.7rem' }}
                                   onClick={(e) => { e.stopPropagation(); handleAddToCart(item.product) }}
-                                  disabled={isSubmitting || item.quantity >= item.product.stock}
+                                  disabled={isSubmitting}
                                   type="button"
                                 />
                               </div>

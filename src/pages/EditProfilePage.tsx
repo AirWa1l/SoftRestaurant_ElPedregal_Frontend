@@ -65,9 +65,19 @@ export function EditProfilePage() {
       setApiError(null)
 
       try {
-        const [profileRes, userRes, ordersRes] = await Promise.all([
+        const userRes = await userService.getCurrentUser()
+
+        if (!isMounted) return
+
+        if (!userRes.success || !userRes.user) {
+          navigate('/login', { replace: true })
+          return
+        }
+
+        setCurrentUser(userRes.user)
+
+        const [profileRes, ordersRes] = await Promise.all([
           userService.getProfile(),
-          userService.getCurrentUser(),
           orderService.getAll(),
         ])
 
@@ -77,10 +87,6 @@ export function EditProfilePage() {
           setForm(profileRes.profile)
         } else {
           setApiError(profileRes.message || 'No fue posible cargar el perfil.')
-        }
-
-        if (userRes.success && userRes.user) {
-          setCurrentUser(userRes.user)
         }
 
         if (ordersRes.success) {
@@ -100,7 +106,7 @@ export function EditProfilePage() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [navigate])
 
   function handleChange(field: keyof ProfileFormData, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -206,6 +212,12 @@ export function EditProfilePage() {
       .join('')
     return letters || '--'
   }, [fullName, currentUser?.initials])
+
+  useEffect(() => {
+    if (!isLoading && !currentUser) {
+      navigate('/login', { replace: true })
+    }
+  }, [isLoading, currentUser, navigate])
 
   const isCustomer = currentUser?.role === 'user'
 

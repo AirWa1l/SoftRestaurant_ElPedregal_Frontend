@@ -4,7 +4,6 @@ import { InputTextarea } from 'primereact/inputtextarea'
 import { Dropdown } from 'primereact/dropdown'
 import { Button } from 'primereact/button'
 import { Message } from 'primereact/message'
-import { InputSwitch } from 'primereact/inputswitch'
 import { Skeleton } from 'primereact/skeleton'
 import { classNames } from 'primereact/utils'
 import type { Product, ProductFormErrors } from '../../../types/product'
@@ -241,15 +240,7 @@ export function ProductEditForm({ productId, onSuccess, onCancel }: Props) {
           {errors.description && <small className="p-error block mt-1" role="alert">{errors.description}</small>}
         </div>
 
-        <div className="flex align-items-center gap-3 mb-3">
-          <InputSwitch
-            checked={form.isAvailable}
-            onChange={(e) => handleChange('isAvailable', e.value)}
-          />
-          <label className="text-sm font-semibold text-900">
-            {form.isAvailable ? 'Disponible en el menú' : 'No disponible'}
-          </label>
-        </div>
+
 
         <div className="flex flex-column gap-2 mb-3">
           <label className="text-xs font-bold text-primary uppercase">

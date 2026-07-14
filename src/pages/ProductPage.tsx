@@ -69,7 +69,7 @@ function EmptyState({ onCreateClick, canCreate }: { onCreateClick: () => void; c
 function ProductCard({ product, onEdit, onDelete, onAddToCart, quantityInCart, showActions, canEdit, canDelete, }: { product: Product; onEdit?: (p: Product) => void; onDelete?: (p: Product) => void; onAddToCart?: (p: Product) => void; quantityInCart?: number; showActions?: boolean; canEdit?: boolean; canDelete?: boolean }) {
   const [imgError, setImgError] = useState(false)
 
-  const badgeClass = product.isAvailable ? 'text-xs font-semibold px-2 py-1 border-round-lg bg-green-100 text-green-700' : 'text-xs font-semibold px-2 py-1 border-round-lg bg-red-100 text-red-600'
+
 
   return (
     <div className="surface-card border-1 surface-border border-round-xl p-3 flex flex-column gap-3">
@@ -88,7 +88,6 @@ function ProductCard({ product, onEdit, onDelete, onAddToCart, quantityInCart, s
 
       <div className="flex justify-content-between align-items-center">
         <span className="text-primary font-bold text-base">{(product.price || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}</span>
-        <span className={badgeClass}>{product.isAvailable ? 'Disponible' : 'No disponible'}</span>
       </div>
 
       {quantityInCart ? (
@@ -139,14 +138,6 @@ export function ProductsPage() {
   const canEdit = canEditProduct(userRole)
   const canDelete = canDeleteProduct(userRole)
   const showActions = canEdit || canDelete
-
-  const categoryOptions = useMemo(
-    () => [
-      { label: 'Todas las categorías', value: '' },
-      ...categories.map((c) => ({ label: c.name, value: c.id })),
-    ],
-    [categories]
-  )
 
   useEffect(() => {
     let mounted = true
@@ -199,6 +190,15 @@ export function ProductsPage() {
     void load()
     return () => { mounted = false }
   }, [])
+
+  const categoryOptions = useMemo(
+    () => {
+      const excludedNames = ['Lácteos', 'Frutas y Verduras', 'Aseo y Limpieza', 'Otros', 'Panadería', 'Snacks']
+      const filtered = categories.filter((c) => !excludedNames.includes(c.name))
+      return filtered.map((c) => ({ label: c.name, value: c.id }))
+    },
+    [categories]
+  )
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
@@ -309,6 +309,7 @@ export function ProductsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full border-round-xl"
+                  style={{ paddingLeft: '2.5rem' }}
                 />
               </span>
               <Dropdown
